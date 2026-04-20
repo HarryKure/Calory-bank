@@ -89,13 +89,17 @@
   .log-header h3 { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
   .clear-btn { font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; font-family: var(--font-head); padding: 0; }
   .log-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 24px; }
-  .log-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.2s ease; }
+  .log-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.2s ease; gap: 10px; }
   @keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
-  .log-name { font-size: 14px; font-weight: 500; }
+  .log-item-left { flex: 1; min-width: 0; }
+  .log-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .log-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+  .log-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .log-cal { font-family: var(--font-mono); font-size: 16px; font-weight: 500; }
   .log-cal.pos { color: var(--green); }
   .log-cal.neg { color: var(--red); }
+  .delete-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; padding: 2px 0 2px 2px; line-height: 1; transition: color 0.15s; opacity: 0.5; }
+  .delete-btn:hover { color: var(--red); opacity: 1; }
   .empty-state { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono); }
 
   /* Modal */
@@ -324,12 +328,14 @@ function render() {
     list.appendChild(document.getElementById('emptyState'));
   } else {
     list.innerHTML='';
-    entries.slice().reverse().forEach(entry=>{
+    // Build reversed list but track global indices for deletion
+    const indexed = state.log.map((e,i)=>({e,i})).filter(({e})=>e.dateKey===viewDate);
+    indexed.slice().reverse().forEach(({e: entry, i: globalIdx})=>{
       const div=document.createElement('div');
       div.className='log-item';
       const sign=entry.type==='earn'?'+':'-';
       const cls=entry.type==='earn'?'pos':'neg';
-      div.innerHTML=`<div><div class="log-name">${entry.name}</div><div class="log-meta">${entry.time}</div></div><div class="log-cal ${cls}">${sign}${entry.cal}</div>`;
+      div.innerHTML=`<div class="log-item-left"><div class="log-name">${entry.name}</div><div class="log-meta">${entry.time}</div></div><div class="log-right"><div class="log-cal ${cls}">${sign}${entry.cal}</div><button class="delete-btn" onclick="deleteEntry(${globalIdx})" title="Remove">×</button></div>`;
       list.appendChild(div);
     });
   }
@@ -515,6 +521,14 @@ function addEntry() {
 
   state.log.push({type:mode,name,cal,dateKey:viewDate,time:timeStr});
   save(); render(); closeModalDirect();
+}
+
+function deleteEntry(idx) {
+  const entry = state.log[idx];
+  const sign = entry.type === 'earn' ? '+' : '-';
+  if (!confirm(`Delete "${entry.name}" (${sign}${entry.cal} kcal)?`)) return;
+  state.log.splice(idx, 1);
+  save(); render();
 }
 
 function clearAll() {
