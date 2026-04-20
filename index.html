@@ -15,91 +15,67 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --surface2: #222;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.14);
-    --text: #f0ede8;
-    --muted: #888;
-    --green: #7dff9b;
-    --green-dim: rgba(125,255,155,0.12);
-    --red: #ff7d6b;
-    --red-dim: rgba(255,125,107,0.12);
-    --amber: #ffc96b;
-    --radius: 16px;
-    --font-head: 'Syne', sans-serif;
-    --font-mono: 'DM Mono', monospace;
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #222;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #f0ede8; --muted: #888;
+    --green: #7dff9b; --green-dim: rgba(125,255,155,0.12);
+    --red: #ff7d6b; --red-dim: rgba(255,125,107,0.12);
+    --amber: #ffc96b; --radius: 16px;
+    --font-head: 'Syne', sans-serif; --font-mono: 'DM Mono', monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-head); overscroll-behavior: none; }
-  body { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--font-head); overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; min-height: 100dvh; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 
-  /* ── Header ── */
-  header {
-    padding: 52px 20px 0;
-    display: flex; align-items: flex-end; justify-content: space-between;
-  }
+  /* Header */
+  header { padding: 52px 20px 0; display: flex; align-items: flex-end; justify-content: space-between; }
   header h1 { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  .streak-pill {
-    font-family: var(--font-mono); font-size: 11px;
-    background: var(--surface2); border: 0.5px solid var(--border2);
-    border-radius: 20px; padding: 5px 10px; color: var(--amber);
-  }
+  .streak-pill { font-family: var(--font-mono); font-size: 11px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 5px 10px; color: var(--amber); }
 
-  /* ── Hero card (balance + chart unified) ── */
-  .hero-wrap { padding: 20px 20px 0; }
-  .hero-card {
-    background: var(--surface); border: 0.5px solid var(--border2);
-    border-radius: var(--radius); padding: 20px 20px 16px;
-    position: relative; overflow: hidden;
-  }
-  .hero-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; }
-  .balance-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-  .balance-amount {
-    font-family: var(--font-mono); font-size: 48px; font-weight: 500;
-    line-height: 1; color: var(--green); transition: color 0.3s;
-  }
+  /* Date nav */
+  .date-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 0; }
+  .date-arrow { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 10px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text); transition: background 0.15s; user-select: none; flex-shrink: 0; }
+  .date-arrow:active { background: var(--surface2); }
+  .date-arrow.disabled { opacity: 0.2; pointer-events: none; }
+  .date-center { text-align: center; flex: 1; }
+  .date-label { font-family: var(--font-mono); font-size: 15px; color: var(--text); }
+  .date-sublabel { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); min-height: 16px; }
+  .today-btn { font-size: 10px; color: var(--amber); background: none; border: none; cursor: pointer; font-family: var(--font-mono); padding: 2px 0 0; display: none; }
+
+  /* Hero card */
+  .hero-wrap { padding: 14px 20px 0; }
+  .hero-card { background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 18px 18px 14px; overflow: hidden; }
+  .hero-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .balance-col { }
+  .balance-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .balance-amount { font-family: var(--font-mono); font-size: 44px; font-weight: 500; line-height: 1; color: var(--green); transition: color 0.3s; }
   .balance-amount.negative { color: var(--red); }
-  .balance-unit { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .kg-badge { text-align: right; }
-  .kg-badge-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-  .kg-badge-val { font-family: var(--font-mono); font-size: 22px; font-weight: 500; transition: color 0.3s; }
-  .kg-badge-val.loss { color: var(--green); }
-  .kg-badge-val.gain { color: var(--red); }
-  .kg-badge-note { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
-  .hero-divider { height: 0.5px; background: var(--border); margin: 14px 0 10px; }
-  .chart-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
-  .chart-tab {
-    font-family: var(--font-mono); font-size: 10px;
-    padding: 4px 10px; border-radius: 20px; cursor: pointer;
-    border: 0.5px solid var(--border); color: var(--muted);
-    background: none; transition: all 0.15s;
-  }
-  .chart-tab.active { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+  .balance-unit { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .kg-col { text-align: right; }
+  .kg-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .kg-val { font-family: var(--font-mono); font-size: 22px; font-weight: 500; }
+  .kg-val.loss { color: var(--green); }
+  .kg-val.gain { color: var(--red); }
+  .kg-note { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 3px; }
+  .hero-divider { height: 0.5px; background: var(--border); margin: 14px 0 12px; }
+  .chart-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .tab-group { display: flex; gap: 4px; }
+  .tab-btn { font-family: var(--font-mono); font-size: 10px; padding: 4px 10px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--border); color: var(--muted); background: none; transition: all 0.15s; }
+  .tab-btn.active { background: var(--surface2); border-color: var(--border2); color: var(--text); }
   canvas#chartCanvas { width: 100% !important; display: block; }
 
-  /* ── Stats row ── */
+  /* Stats */
   .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 20px 0; }
-  .stat {
-    background: var(--surface); border: 0.5px solid var(--border);
-    border-radius: 12px; padding: 14px 16px;
-  }
+  .stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; }
   .stat-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
   .stat-val { font-family: var(--font-mono); font-size: 22px; font-weight: 500; }
   .stat-val.green { color: var(--green); }
   .stat-val.red { color: var(--red); }
   .stat-sub { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
 
-  /* ── Add buttons ── */
+  /* Add buttons */
   .add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 20px 0; }
-  .add-btn {
-    border: 0.5px solid var(--border2); border-radius: var(--radius);
-    padding: 18px 14px; cursor: pointer;
-    display: flex; flex-direction: column; gap: 8px;
-    transition: transform 0.12s, background 0.15s;
-    background: var(--surface);
-  }
+  .add-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 18px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: transform 0.12s, background 0.15s; background: var(--surface); }
   .add-btn:active { transform: scale(0.96); }
   .add-btn.earn { background: var(--green-dim); border-color: rgba(125,255,155,0.2); }
   .add-btn.spend { background: var(--red-dim); border-color: rgba(255,125,107,0.2); }
@@ -107,79 +83,40 @@
   .add-btn .btn-main { font-size: 15px; font-weight: 700; }
   .add-btn .btn-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
 
-  /* ── Log ── */
+  /* Log */
   .log-section { flex: 1; padding: 20px 20px 0; }
   .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .log-header h3 { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
   .clear-btn { font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; font-family: var(--font-head); padding: 0; }
   .log-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 24px; }
-  .log-item {
-    background: var(--surface); border: 0.5px solid var(--border);
-    border-radius: 12px; padding: 12px 14px;
-    display: flex; justify-content: space-between; align-items: center;
-    animation: slideIn 0.25s cubic-bezier(.4,0,.2,1);
-  }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .log-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
   .log-name { font-size: 14px; font-weight: 500; }
   .log-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
   .log-cal { font-family: var(--font-mono); font-size: 16px; font-weight: 500; }
   .log-cal.pos { color: var(--green); }
   .log-cal.neg { color: var(--red); }
-  .empty-state { text-align: center; padding: 40px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono); }
+  .empty-state { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono); }
 
-  /* ── Modal ── */
-  .modal-bg {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
-    z-index: 100; align-items: flex-end; justify-content: center;
-  }
+  /* Modal */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-bg.open { display: flex; }
-  .modal {
-    background: var(--surface); border: 0.5px solid var(--border2);
-    border-radius: 24px 24px 0 0;
-    padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
-    width: 100%; max-width: 430px;
-    animation: slideUp 0.28s cubic-bezier(.4,0,.2,1);
-  }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 24px 24px 0 0; padding: 28px 24px calc(28px + env(safe-area-inset-bottom)); width: 100%; max-width: 430px; animation: slideUp 0.28s cubic-bezier(.4,0,.2,1); }
+  @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
   .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
   .modal-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   .quick-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .pill {
-    font-family: var(--font-mono); font-size: 13px;
-    background: var(--surface2); border: 0.5px solid var(--border2);
-    border-radius: 20px; padding: 7px 14px; cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
-  }
-  .pill:hover { background: var(--border2); }
+  .pill { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 7px 14px; cursor: pointer; transition: background 0.12s; }
   .pill.selected { border-color: var(--green); color: var(--green); background: var(--green-dim); }
   .pill.selected.spend-mode { border-color: var(--red); color: var(--red); background: var(--red-dim); }
-  .custom-row { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
-  .cal-input {
-    flex: 1; background: var(--surface2); border: 0.5px solid var(--border2);
-    border-radius: 10px; padding: 12px 14px; color: var(--text);
-    font-family: var(--font-mono); font-size: 18px; outline: none;
-    transition: border-color 0.2s;
-  }
-  .cal-input:focus { border-color: var(--border2); }
+  .custom-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .cal-input { flex: 1; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: var(--font-mono); font-size: 18px; outline: none; }
   .cal-input::placeholder { color: var(--muted); }
-  .name-input {
-    width: 100%; background: var(--surface2); border: 0.5px solid var(--border2);
-    border-radius: 10px; padding: 12px 14px; color: var(--text);
-    font-family: var(--font-head); font-size: 15px; outline: none; margin-bottom: 16px;
-  }
+  .name-input { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: var(--font-head); font-size: 15px; outline: none; margin-bottom: 16px; }
   .name-input::placeholder { color: var(--muted); }
   .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .btn-cancel {
-    background: var(--surface2); border: 0.5px solid var(--border2);
-    border-radius: 12px; padding: 14px; font-family: var(--font-head);
-    font-size: 15px; color: var(--muted); cursor: pointer;
-  }
-  .btn-confirm {
-    border: none; border-radius: 12px; padding: 14px;
-    font-family: var(--font-head); font-size: 15px; font-weight: 700;
-    cursor: pointer; transition: opacity 0.15s;
-  }
+  .btn-cancel { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 12px; padding: 14px; font-family: var(--font-head); font-size: 15px; color: var(--muted); cursor: pointer; }
+  .btn-confirm { border: none; border-radius: 12px; padding: 14px; font-family: var(--font-head); font-size: 15px; font-weight: 700; cursor: pointer; }
   .btn-confirm.earn { background: var(--green); color: #0f0f0f; }
   .btn-confirm.spend { background: var(--red); color: #0f0f0f; }
 </style>
@@ -187,28 +124,44 @@
 <body>
 
 <header>
-  <h1>Calorie Bank</h1>
+  <h1>Cal Bank</h1>
   <div class="streak-pill" id="streakPill">🔥 0 day streak</div>
 </header>
+
+<div class="date-nav">
+  <div class="date-arrow" id="datePrev" onclick="shiftDay(-1)">‹</div>
+  <div class="date-center">
+    <div class="date-label" id="dateLabel">Today</div>
+    <div class="date-sublabel" id="dateSublabel"></div>
+    <button class="today-btn" id="todayBtn" onclick="goToday()">back to today</button>
+  </div>
+  <div class="date-arrow" id="dateNext" onclick="shiftDay(1)">›</div>
+</div>
 
 <div class="hero-wrap">
   <div class="hero-card">
     <div class="hero-top">
-      <div>
-        <div class="balance-label">Balance</div>
+      <div class="balance-col">
+        <div class="balance-label" id="balanceLabel">Balance</div>
         <div class="balance-amount" id="balanceAmt">0</div>
-        <div class="balance-unit">kcal available</div>
+        <div class="balance-unit">kcal cumulative</div>
       </div>
-      <div class="kg-badge">
-        <div class="kg-badge-label">Est. change</div>
-        <div class="kg-badge-val loss" id="kgVal">0.00 kg</div>
-        <div class="kg-badge-note" id="kgNote">surplus → loss</div>
+      <div class="kg-col">
+        <div class="kg-label">Est. change</div>
+        <div class="kg-val loss" id="kgVal">0.00 kg</div>
+        <div class="kg-note" id="kgNote">surplus → loss</div>
       </div>
     </div>
     <div class="hero-divider"></div>
-    <div class="chart-tabs">
-      <button class="chart-tab active" onclick="setChartView('cumulative',this)">cumulative</button>
-      <button class="chart-tab" onclick="setChartView('daily',this)">daily</button>
+    <div class="chart-controls">
+      <div class="tab-group" id="typeTabs">
+        <button class="tab-btn active" onclick="setChartType('bar',this)">daily</button>
+        <button class="tab-btn" onclick="setChartType('line',this)">cumulative</button>
+      </div>
+      <div class="tab-group" id="rangeTabs">
+        <button class="tab-btn active" onclick="setRange('week',this)">week</button>
+        <button class="tab-btn" onclick="setRange('month',this)">month</button>
+      </div>
     </div>
     <canvas id="chartCanvas" height="150"></canvas>
   </div>
@@ -218,12 +171,12 @@
   <div class="stat">
     <div class="stat-label">Earned</div>
     <div class="stat-val green" id="earnedAmt">+0</div>
-    <div class="stat-sub">this week</div>
+    <div class="stat-sub" id="earnedSub">today</div>
   </div>
   <div class="stat">
     <div class="stat-label">Spent</div>
     <div class="stat-val red" id="spentAmt">-0</div>
-    <div class="stat-sub">this week</div>
+    <div class="stat-sub" id="spentSub">today</div>
   </div>
 </div>
 
@@ -242,16 +195,15 @@
 
 <div class="log-section">
   <div class="log-header">
-    <h3>Activity log</h3>
-    <button class="clear-btn" onclick="clearLog()">clear all</button>
+    <h3 id="logTitle">Today's activity</h3>
+    <button class="clear-btn" onclick="clearAll()">clear all</button>
   </div>
   <div class="log-list" id="logList">
     <div class="empty-state" id="emptyState">no activity yet</div>
   </div>
 </div>
 
-<!-- Modal -->
-<div class="modal-bg" id="modalBg" onclick="closeModal(event)">
+<div class="modal-bg" id="modalBg" onclick="closeModalBg(event)">
   <div class="modal">
     <h2 id="modalTitle">Log workout</h2>
     <div class="modal-label">Quick select</div>
@@ -264,272 +216,314 @@
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModalDirect()">Cancel</button>
-      <button class="btn-confirm earn" id="confirmBtn" onclick="confirm()">Add</button>
+      <button class="btn-confirm earn" id="confirmBtn" onclick="addEntry()">Add</button>
     </div>
   </div>
 </div>
 
-<script>
-const EARN_PRESETS = [
-  {name:'Walk',cal:150},{name:'Run',cal:350},{name:'Gym',cal:400},
-  {name:'Cycling',cal:380},{name:'Swim',cal:300},{name:'Yoga',cal:180}
-];
-const SPEND_PRESETS = [
-  {name:'Fruit',cal:80},{name:'Snack bar',cal:180},{name:'Chocolate',cal:220},
-  {name:'Crisps',cal:160},{name:'Ice cream',cal:280},{name:'Cookie',cal:140}
-];
-
-let mode = 'earn';
-let selectedPreset = null;
-let state = JSON.parse(localStorage.getItem('calbank') || 'null') || {
-  balance: 0, earned: 0, spent: 0, log: [], streak: 0, lastDay: null
-};
-
-function save() { localStorage.setItem('calbank', JSON.stringify(state)); }
-
-function render() {
-  const bal = state.balance;
-  const el = document.getElementById('balanceAmt');
-  el.textContent = (bal >= 0 ? '+' : '') + bal;
-  el.className = 'balance-amount' + (bal < 0 ? ' negative' : '');
-  document.getElementById('earnedAmt').textContent = '+' + state.earned;
-  document.getElementById('spentAmt').textContent = '-' + state.spent;
-  document.getElementById('streakPill').textContent = '🔥 ' + state.streak + ' day streak';
-
-  const list = document.getElementById('logList');
-  const empty = document.getElementById('emptyState');
-  if (state.log.length === 0) {
-    list.innerHTML = '';
-    list.appendChild(empty);
-    return;
-  }
-  list.innerHTML = '';
-  state.log.slice().reverse().forEach(entry => {
-    const div = document.createElement('div');
-    div.className = 'log-item';
-    const sign = entry.type === 'earn' ? '+' : '-';
-    const cls = entry.type === 'earn' ? 'pos' : 'neg';
-    div.innerHTML = `<div><div class="log-name">${entry.name}</div><div class="log-meta">${entry.time}</div></div><div class="log-cal ${cls}">${sign}${entry.cal}</div>`;
-    list.appendChild(div);
-  });
-}
-
-function openModal(m) {
-  mode = m;
-  selectedPreset = null;
-  document.getElementById('calInput').value = '';
-  document.getElementById('nameInput').value = '';
-  document.getElementById('modalTitle').textContent = m === 'earn' ? 'Log workout' : 'Log snack';
-  const confirmBtn = document.getElementById('confirmBtn');
-  confirmBtn.className = 'btn-confirm ' + (m === 'earn' ? 'earn' : 'spend');
-  const presets = m === 'earn' ? EARN_PRESETS : SPEND_PRESETS;
-  const pillsEl = document.getElementById('quickPills');
-  pillsEl.innerHTML = '';
-  presets.forEach(p => {
-    const pill = document.createElement('div');
-    pill.className = 'pill';
-    pill.textContent = p.name + ' · ' + p.cal;
-    pill.onclick = () => {
-      document.querySelectorAll('.pill').forEach(x => x.classList.remove('selected','spend-mode'));
-      pill.classList.add('selected');
-      if (m === 'spend') pill.classList.add('spend-mode');
-      selectedPreset = p;
-      document.getElementById('calInput').value = p.cal;
-      document.getElementById('nameInput').value = p.name;
-    };
-    pillsEl.appendChild(pill);
-  });
-  document.getElementById('modalBg').classList.add('open');
-}
-
-function closeModalDirect() { document.getElementById('modalBg').classList.remove('open'); }
-function closeModal(e) { if (e.target === document.getElementById('modalBg')) closeModalDirect(); }
-
-function confirm() {
-  const cal = parseInt(document.getElementById('calInput').value);
-  if (!cal || cal <= 0) return;
-  const rawName = document.getElementById('nameInput').value.trim();
-  const name = rawName || (mode === 'earn' ? 'Workout' : 'Snack');
-  const now = new Date();
-  const timeStr = now.toLocaleDateString('en-GB',{weekday:'short',month:'short',day:'numeric'}) + ' · ' + now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  const today = now.toDateString();
-
-  if (state.lastDay !== today) {
-    state.streak = state.lastDay === new Date(now - 86400000).toDateString() ? state.streak + 1 : 1;
-    state.lastDay = today;
-  }
-
-  if (mode === 'earn') { state.balance += cal; state.earned += cal; }
-  else { state.balance -= cal; state.spent += cal; }
-  state.log.push({ type: mode, name, cal, time: timeStr });
-  save(); render();
-  closeModalDirect();
-}
-
-function clearLog() {
-  if (!confirm('Clear all activity and reset balance?')) return;
-  state = { balance: 0, earned: 0, spent: 0, log: [], streak: 0, lastDay: null };
-  save(); render();
-}
-
-render();
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
-</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const KCAL_PER_KG = 7700;
-let chartView = 'cumulative';
+const EARN_PRESETS = [{name:'Walk',cal:150},{name:'Run',cal:350},{name:'Gym',cal:400},{name:'Cycling',cal:380},{name:'Swim',cal:300},{name:'Yoga',cal:180}];
+const SPEND_PRESETS = [{name:'Fruit',cal:80},{name:'Snack bar',cal:180},{name:'Chocolate',cal:220},{name:'Crisps',cal:160},{name:'Ice cream',cal:280},{name:'Cookie',cal:140}];
+
+// ── Date helpers ─────────────────────────────────────────
+function dateKey(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function parseKey(k) { const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
+function todayKey() { return dateKey(new Date()); }
+function addDays(k,n) { const d=parseKey(k); d.setDate(d.getDate()+n); return dateKey(d); }
+function formatLabel(k) {
+  const tk=todayKey();
+  if (k===tk) return 'Today';
+  if (k===addDays(tk,-1)) return 'Yesterday';
+  return parseKey(k).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+}
+function formatSub(k) { return parseKey(k).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }
+function shortDay(k) { return parseKey(k).toLocaleDateString('en-GB',{weekday:'short'}); }
+function shortDate(k) { const d=parseKey(k); return String(d.getDate())+'/'+String(d.getMonth()+1); }
+
+// ── State ────────────────────────────────────────────────
+let state = JSON.parse(localStorage.getItem('calbank2')||'null') || {log:[],streak:0,lastDay:null};
+// Migrate from old format
+if (state.earned !== undefined) {
+  state = {log:[],streak:state.streak||0,lastDay:state.lastDay||null};
+  localStorage.setItem('calbank2', JSON.stringify(state));
+}
+
+let viewDate = todayKey();
+let chartType = 'bar';
+let chartRange = 'week';
+let mode = 'earn';
 let chart = null;
 
-function setChartView(v, btn) {
-  chartView = v;
-  document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
+function save() { localStorage.setItem('calbank2', JSON.stringify(state)); }
+
+// ── Derived ──────────────────────────────────────────────
+function getDayNet(k) {
+  return state.log.filter(e=>e.dateKey===k).reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
+}
+function getCumulative(upToKey) {
+  return state.log.filter(e=>e.dateKey<=upToKey).reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
+}
+function getDayTotals(k) {
+  let earned=0,spent=0;
+  state.log.filter(e=>e.dateKey===k).forEach(e=>{ if(e.type==='earn') earned+=e.cal; else spent+=e.cal; });
+  return {earned,spent};
+}
+
+// Chart window: n days ending at viewDate
+function getChartKeys() {
+  const n = chartRange==='week' ? 7 : 30;
+  const keys=[];
+  for(let i=n-1;i>=0;i--) keys.push(addDays(viewDate,-i));
+  return keys;
+}
+
+// ── Render ───────────────────────────────────────────────
+function render() {
+  const isToday = viewDate===todayKey();
+
+  // Date nav
+  document.getElementById('dateLabel').textContent = formatLabel(viewDate);
+  document.getElementById('dateSublabel').textContent = isToday ? '' : formatSub(viewDate);
+  document.getElementById('todayBtn').style.display = isToday ? 'none' : 'block';
+  document.getElementById('dateNext').classList.toggle('disabled', isToday);
+
+  // Balance = cumulative up to viewDate
+  const bal = getCumulative(viewDate);
+  const balEl = document.getElementById('balanceAmt');
+  balEl.textContent = (bal>=0?'+':'')+bal;
+  balEl.className = 'balance-amount'+(bal<0?' negative':'');
+  document.getElementById('balanceLabel').textContent = isToday ? 'Balance' : 'Balance at date';
+
+  // kg
+  const kgEl = document.getElementById('kgVal');
+  kgEl.textContent = (bal>=0?'-':'+')+Math.abs(bal/KCAL_PER_KG).toFixed(2)+' kg';
+  kgEl.className = 'kg-val '+(bal>=0?'loss':'gain');
+  document.getElementById('kgNote').textContent = bal>=0 ? 'surplus → loss' : 'deficit → gain';
+
+  // Day stats
+  const {earned,spent} = getDayTotals(viewDate);
+  document.getElementById('earnedAmt').textContent = '+'+earned;
+  document.getElementById('spentAmt').textContent = '-'+spent;
+  const dayLbl = isToday ? 'today' : formatLabel(viewDate).toLowerCase();
+  document.getElementById('earnedSub').textContent = dayLbl;
+  document.getElementById('spentSub').textContent = dayLbl;
+
+  // Streak
+  document.getElementById('streakPill').textContent = '🔥 '+state.streak+' day streak';
+
+  // Log
+  const entries = state.log.filter(e=>e.dateKey===viewDate);
+  const list = document.getElementById('logList');
+  document.getElementById('logTitle').textContent = isToday ? "Today's activity" : formatLabel(viewDate);
+  if (entries.length===0) {
+    list.innerHTML='';
+    list.appendChild(document.getElementById('emptyState'));
+  } else {
+    list.innerHTML='';
+    entries.slice().reverse().forEach(entry=>{
+      const div=document.createElement('div');
+      div.className='log-item';
+      const sign=entry.type==='earn'?'+':'-';
+      const cls=entry.type==='earn'?'pos':'neg';
+      div.innerHTML=`<div><div class="log-name">${entry.name}</div><div class="log-meta">${entry.time}</div></div><div class="log-cal ${cls}">${sign}${entry.cal}</div>`;
+      list.appendChild(div);
+    });
+  }
+
   renderChart();
 }
 
-function buildChartData() {
-  const log = state.log;
-  if (log.length === 0) return { labels: [], cumulative: [], daily: [] };
+function renderChart() {
+  if (typeof Chart === 'undefined') return;
 
-  // Group by day label
-  const dayMap = new Map();
-  log.forEach(e => {
-    const day = e.time.split(' · ')[0];
-    if (!dayMap.has(day)) dayMap.set(day, 0);
-    dayMap.set(day, dayMap.get(day) + (e.type === 'earn' ? e.cal : -e.cal));
+  const keys = getChartKeys();
+  const dailyNets = keys.map(k=>getDayNet(k));
+  const cumulatives = keys.map(k=>getCumulative(k));
+  const useData = chartType==='line' ? cumulatives : dailyNets;
+  const viewIdx = keys.indexOf(viewDate);
+
+  // X labels
+  const labels = keys.map((k,i) => {
+    if (chartRange==='week') return shortDay(k);
+    // month: label every 7th or 1st
+    const day = parseKey(k).getDate();
+    if (day===1 || day%7===1) return shortDate(k);
+    return '';
   });
 
-  const days = [...dayMap.keys()];
-  const dailyVals = days.map(d => dayMap.get(d));
+  const barBg = useData.map((v,i) =>
+    i===viewIdx
+      ? (v>=0 ? '#7dff9b' : '#ff7d6b')
+      : (v>=0 ? 'rgba(125,255,155,0.4)' : 'rgba(255,125,107,0.4)')
+  );
+  const barBorder = useData.map((v,i) =>
+    v>=0 ? 'rgba(125,255,155,0.8)' : 'rgba(255,125,107,0.8)'
+  );
 
-  let running = 0;
-  const cumulative = dailyVals.map(v => { running += v; return running; });
-
-  return { labels: days, cumulative, daily: dailyVals };
-}
-
-function renderChart() {
-  const { labels, cumulative, daily } = buildChartData();
-  const data = chartView === 'cumulative' ? cumulative : daily;
-
-  // kg badge
-  const totalBal = state.balance;
-  const kgEl = document.getElementById('kgVal');
-  const absKg = Math.abs(totalBal / KCAL_PER_KG).toFixed(2);
-  kgEl.textContent = (totalBal >= 0 ? '-' : '+') + absKg + ' kg';
-  kgEl.className = 'kg-badge-val ' + (totalBal >= 0 ? 'loss' : 'gain');
-  document.getElementById('kgNote').textContent = totalBal >= 0 ? 'surplus → loss' : 'deficit → gain';
-
-  if (!labels.length) {
-    if (chart) { chart.destroy(); chart = null; }
-    const ctx = document.getElementById('chartCanvas').getContext('2d');
-    // Draw empty state
-    if (chart) chart.destroy();
-    chart = new Chart(ctx, {
-      type: 'bar',
-      data: { labels: ['no data'], datasets: [{ data: [0], backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }] },
-      options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#555' }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { ticks: { color: '#555' }, grid: { color: 'rgba(255,255,255,0.04)' } } }, animation: false }
-    });
-    return;
-  }
-
-  const colors = data.map(v => v >= 0 ? 'rgba(125,255,155,0.7)' : 'rgba(255,125,107,0.7)');
-  const borderColors = data.map(v => v >= 0 ? '#7dff9b' : '#ff7d6b');
-
-  // Second axis: kg
-  const kgData = data.map(v => (v / KCAL_PER_KG).toFixed(3));
+  const kgOverlay = cumulatives.map(v=>+(v/KCAL_PER_KG).toFixed(3));
 
   const ctx = document.getElementById('chartCanvas').getContext('2d');
-  if (chart) chart.destroy();
+  if (chart) { chart.destroy(); chart=null; }
+
+  // Annotation line at y=0
+  const lineColor = chartType==='line'
+    ? (cumulatives[cumulatives.length-1]>=0 ? '#7dff9b' : '#ff7d6b')
+    : 'transparent';
 
   chart = new Chart(ctx, {
-    type: chartView === 'cumulative' ? 'line' : 'bar',
+    type: chartType,
     data: {
       labels,
       datasets: [
         {
           label: 'kcal',
-          data,
-          backgroundColor: chartView === 'cumulative' ? 'rgba(125,255,155,0.08)' : colors,
-          borderColor: chartView === 'cumulative' ? '#7dff9b' : borderColors,
-          borderWidth: chartView === 'cumulative' ? 2 : 1,
-          pointBackgroundColor: data.map(v => v >= 0 ? '#7dff9b' : '#ff7d6b'),
-          pointRadius: chartView === 'cumulative' ? 4 : 0,
-          fill: chartView === 'cumulative',
-          tension: 0.35,
+          data: useData,
+          backgroundColor: chartType==='line' ? 'rgba(125,255,155,0.07)' : barBg,
+          borderColor: chartType==='line' ? lineColor : barBorder,
+          borderWidth: chartType==='line' ? 2 : 1,
+          pointBackgroundColor: cumulatives.map((v,i)=> i===viewIdx ? '#ffffff' : (v>=0?'#7dff9b':'#ff7d6b')),
+          pointRadius: chartType==='line' ? keys.map((_,i)=> i===viewIdx ? 5 : 2) : 0,
+          fill: chartType==='line',
+          tension: 0.3,
           yAxisID: 'y',
         },
         {
           label: 'kg',
-          data: kgData,
-          borderColor: 'rgba(255,201,107,0.6)',
-          borderWidth: 1.5,
-          borderDash: [4, 3],
-          pointRadius: 0,
+          data: kgOverlay,
           type: 'line',
+          borderColor: 'rgba(255,201,107,0.5)',
+          borderWidth: 1.5,
+          borderDash: [4,3],
+          pointRadius: 0,
           fill: false,
-          tension: 0.35,
+          tension: 0.3,
           yAxisID: 'y2',
         }
       ]
     },
     options: {
       responsive: true,
-      interaction: { mode: 'index', intersect: false },
+      interaction: { mode:'index', intersect:false },
+      onClick: (evt, els) => {
+        if (els.length) { viewDate=keys[els[0].index]; render(); }
+      },
       plugins: {
-        legend: { display: false },
+        legend: { display:false },
         tooltip: {
           backgroundColor: '#1a1a1a',
-          borderColor: 'rgba(255,255,255,0.14)',
-          borderWidth: 1,
-          titleColor: '#888',
-          bodyColor: '#f0ede8',
-          titleFont: { family: 'DM Mono', size: 11 },
-          bodyFont: { family: 'DM Mono', size: 12 },
+          borderColor: 'rgba(255,255,255,0.14)', borderWidth:1,
+          titleColor:'#888', bodyColor:'#f0ede8',
+          titleFont:{family:'DM Mono',size:10}, bodyFont:{family:'DM Mono',size:11},
           callbacks: {
-            label: ctx => {
-              if (ctx.datasetIndex === 0) return ' ' + (ctx.raw >= 0 ? '+' : '') + ctx.raw + ' kcal';
-              const kg = parseFloat(ctx.raw);
-              return ' ' + (kg >= 0 ? '-' : '+') + Math.abs(kg).toFixed(3) + ' kg';
+            title: items => formatLabel(keys[items[0].dataIndex]),
+            label: item => {
+              if (item.datasetIndex===0) return ' '+(item.raw>=0?'+':'')+item.raw+' kcal';
+              const n=parseFloat(item.raw);
+              return ' '+(n>=0?'-':'+')+Math.abs(n).toFixed(3)+' kg';
             }
           }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#555', font: { family: 'DM Mono', size: 10 }, maxRotation: 0, maxTicksLimit: 6 },
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          border: { color: 'rgba(255,255,255,0.08)' }
+          ticks: { color:'#555', font:{family:'DM Mono',size:10}, maxRotation:0 },
+          grid: { color:'rgba(255,255,255,0.04)' },
+          border: { color:'rgba(255,255,255,0.08)' }
         },
         y: {
-          position: 'left',
-          ticks: { color: '#555', font: { family: 'DM Mono', size: 10 }, callback: v => (v >= 0 ? '+' : '') + v },
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          border: { color: 'rgba(255,255,255,0.08)' }
+          position:'left',
+          ticks: { color:'#555', font:{family:'DM Mono',size:10}, callback: v=>(v>=0?'+':'')+v },
+          grid: { color:'rgba(255,255,255,0.04)' },
+          border: { color:'rgba(255,255,255,0.08)' }
         },
         y2: {
-          position: 'right',
+          position:'right',
           ticks: {
-            color: 'rgba(255,201,107,0.5)',
-            font: { family: 'DM Mono', size: 10 },
-            callback: v => { const n = parseFloat(v); return (n >= 0 ? '-' : '+') + Math.abs(n).toFixed(2) + 'kg'; }
+            color:'rgba(255,201,107,0.45)', font:{family:'DM Mono',size:10},
+            callback: v=>{ const n=parseFloat(v); return (n>=0?'-':'+')+Math.abs(n).toFixed(2)+'kg'; }
           },
-          grid: { drawOnChartArea: false },
-          border: { color: 'rgba(255,255,255,0.08)' }
+          grid: { drawOnChartArea:false },
+          border: { color:'rgba(255,255,255,0.08)' }
         }
       }
     }
   });
 }
 
-// Patch render to also update chart
-const _origRender = render;
-render = function() { _origRender(); renderChart(); };
-render();
+// ── Controls ─────────────────────────────────────────────
+function shiftDay(n) {
+  const next=addDays(viewDate,n);
+  if (next>todayKey()) return;
+  viewDate=next; render();
+}
+function goToday() { viewDate=todayKey(); render(); }
+function setChartType(t,btn) {
+  chartType=t;
+  document.querySelectorAll('#typeTabs .tab-btn').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active'); renderChart();
+}
+function setRange(r,btn) {
+  chartRange=r;
+  document.querySelectorAll('#rangeTabs .tab-btn').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active'); renderChart();
+}
 
+// ── Modal ────────────────────────────────────────────────
+function openModal(m) {
+  mode=m;
+  document.getElementById('calInput').value='';
+  document.getElementById('nameInput').value='';
+  document.getElementById('modalTitle').textContent=m==='earn'?'Log workout':'Log snack';
+  document.getElementById('confirmBtn').className='btn-confirm '+m;
+  const presets=m==='earn'?EARN_PRESETS:SPEND_PRESETS;
+  const pillsEl=document.getElementById('quickPills');
+  pillsEl.innerHTML='';
+  presets.forEach(p=>{
+    const pill=document.createElement('div'); pill.className='pill';
+    pill.textContent=p.name+' · '+p.cal;
+    pill.onclick=()=>{
+      document.querySelectorAll('.pill').forEach(x=>x.classList.remove('selected','spend-mode'));
+      pill.classList.add('selected'); if(m==='spend') pill.classList.add('spend-mode');
+      document.getElementById('calInput').value=p.cal;
+      document.getElementById('nameInput').value=p.name;
+    };
+    pillsEl.appendChild(pill);
+  });
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModalDirect() { document.getElementById('modalBg').classList.remove('open'); }
+function closeModalBg(e) { if(e.target===document.getElementById('modalBg')) closeModalDirect(); }
+
+function addEntry() {
+  const cal=parseInt(document.getElementById('calInput').value);
+  if(!cal||cal<=0) return;
+  const name=document.getElementById('nameInput').value.trim()||(mode==='earn'?'Workout':'Snack');
+  const now=new Date();
+  const timeStr=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+
+  if (viewDate===todayKey()) {
+    const today=now.toDateString();
+    if (state.lastDay!==today) {
+      state.streak=state.lastDay===new Date(now-86400000).toDateString()?state.streak+1:1;
+      state.lastDay=today;
+    }
+  }
+
+  state.log.push({type:mode,name,cal,dateKey:viewDate,time:timeStr});
+  save(); render(); closeModalDirect();
+}
+
+function clearAll() {
+  if(!confirm('Clear all activity?')) return;
+  state={log:[],streak:0,lastDay:null}; save(); render();
+}
+
+render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
 </body>
 </html>
