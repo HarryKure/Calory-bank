@@ -102,7 +102,42 @@
   .delete-btn:hover { color: var(--red); opacity: 1; }
   .empty-state { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono); }
 
-  /* Modal */
+  /* Scanner */
+  .scan-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.12s, background 0.15s; background: var(--surface); margin: 10px 20px 0; }
+  .scan-btn:active { transform: scale(0.98); }
+  .scan-btn .icon { font-size: 18px; }
+  .scan-btn .btn-main { font-size: 15px; font-weight: 700; }
+  .scan-btn .btn-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+  /* Scanner modal */
+  .scan-modal-bg { display: none; position: fixed; inset: 0; background: #000; z-index: 200; flex-direction: column; }
+  .scan-modal-bg.open { display: flex; }
+  .scan-header { display: flex; align-items: center; justify-content: space-between; padding: 52px 20px 16px; }
+  .scan-header h2 { font-size: 18px; font-weight: 700; }
+  .scan-close { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; color: var(--muted); }
+  .scan-viewport { flex: 1; position: relative; overflow: hidden; }
+  #scanVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .scan-frame { width: 240px; height: 140px; border: 2px solid var(--green); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55); position: relative; }
+  .scan-frame::before { content: ''; position: absolute; top: -2px; left: 20px; right: 20px; height: 2px; background: var(--green); animation: scanline 2s linear infinite; }
+  @keyframes scanline { 0%,100% { top: -2px; } 50% { top: calc(100% - 2px); } }
+  .scan-hint { position: absolute; bottom: 32px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.5); }
+  .scan-status { padding: 16px 20px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); text-align: center; min-height: 48px; }
+
+  /* Product result */
+  .product-card { margin: 0 20px 16px; background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 16px; }
+  .product-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .product-brand { font-size: 12px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 14px; }
+  .product-macros { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .macro-pill { font-family: var(--font-mono); font-size: 11px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: 20px; padding: 4px 10px; color: var(--muted); }
+  .macro-pill.highlight { border-color: var(--amber); color: var(--amber); }
+  .serving-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .serving-input { width: 90px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 10px 12px; color: var(--text); font-family: var(--font-mono); font-size: 16px; outline: none; text-align: center; }
+  .serving-label { font-size: 13px; color: var(--muted); font-family: var(--font-mono); }
+  .serving-total { font-family: var(--font-mono); font-size: 20px; font-weight: 500; color: var(--red); margin-left: auto; }
+  .product-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rescan-btn { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 12px; padding: 12px; font-family: var(--font-head); font-size: 14px; color: var(--muted); cursor: pointer; text-align: center; }
+  .add-food-btn { background: var(--red); border: none; border-radius: 12px; padding: 12px; font-family: var(--font-head); font-size: 14px; font-weight: 700; color: #0f0f0f; cursor: pointer; text-align: center; }
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-bg.open { display: flex; }
   .modal { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 24px 24px 0 0; padding: 28px 24px calc(28px + env(safe-area-inset-bottom)); width: 100%; max-width: 430px; animation: slideUp 0.28s cubic-bezier(.4,0,.2,1); }
@@ -197,6 +232,14 @@
   </div>
 </div>
 
+<div class="scan-btn" onclick="openScanner()">
+  <div class="icon">📷</div>
+  <div>
+    <div class="btn-main">Scan barcode</div>
+    <div class="btn-sub">look up food calories</div>
+  </div>
+</div>
+
 <div class="log-section">
   <div class="log-header">
     <h3 id="logTitle">Today's activity</h3>
@@ -222,6 +265,25 @@
       <button class="btn-cancel" onclick="closeModalDirect()">Cancel</button>
       <button class="btn-confirm earn" id="confirmBtn" onclick="addEntry()">Add</button>
     </div>
+  </div>
+</div>
+
+<!-- Scanner modal -->
+<div class="scan-modal-bg" id="scanModalBg">
+  <div class="scan-header">
+    <h2>Scan barcode</h2>
+    <div class="scan-close" onclick="closeScanner()">×</div>
+  </div>
+  <div class="scan-viewport" id="scanViewport">
+    <video id="scanVideo" autoplay playsinline muted></video>
+    <div class="scan-overlay">
+      <div class="scan-frame"></div>
+    </div>
+    <div class="scan-hint">point at a food barcode</div>
+  </div>
+  <div class="scan-status" id="scanStatus">looking for barcode…</div>
+  <div id="productResult" style="display:none">
+    <div class="product-card" id="productCard"></div>
   </div>
 </div>
 
@@ -538,6 +600,239 @@ function clearAll() {
 
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+// ── Barcode Scanner ───────────────────────────────────────
+let scanStream = null;
+let scanAnimFrame = null;
+let scanCanvas = null;
+let scanCtx = null;
+let currentProduct = null;
+
+function openScanner() {
+  document.getElementById('scanModalBg').classList.add('open');
+  document.getElementById('productResult').style.display = 'none';
+  document.getElementById('scanStatus').textContent = 'starting camera…';
+  document.getElementById('scanViewport').style.display = 'block';
+  startCamera();
+}
+
+function closeScanner() {
+  stopCamera();
+  document.getElementById('scanModalBg').classList.remove('open');
+  currentProduct = null;
+}
+
+async function startCamera() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('scanVideo');
+    video.srcObject = scanStream;
+    video.onloadedmetadata = () => {
+      video.play();
+      scanCanvas = document.createElement('canvas');
+      scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+      document.getElementById('scanStatus').textContent = 'looking for barcode…';
+      scanLoop();
+    };
+  } catch(e) {
+    document.getElementById('scanStatus').textContent = 'camera access denied — check browser permissions';
+  }
+}
+
+function stopCamera() {
+  if (scanAnimFrame) { cancelAnimationFrame(scanAnimFrame); scanAnimFrame = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+}
+
+function scanLoop() {
+  const video = document.getElementById('scanVideo');
+  if (!video || !scanStream) return;
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    scanCanvas.width = video.videoWidth;
+    scanCanvas.height = video.videoHeight;
+    scanCtx.drawImage(video, 0, 0);
+    try {
+      const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+      if (typeof BarcodeDetector !== 'undefined') {
+        // Native BarcodeDetector (Chrome Android, some others)
+        nativeScan(imageData);
+        return;
+      }
+    } catch(e) {}
+  }
+  scanAnimFrame = requestAnimationFrame(scanLoop);
+}
+
+// Native BarcodeDetector API (Chrome/Android)
+let barcodeDetector = null;
+async function nativeScan() {
+  if (!barcodeDetector) {
+    barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
+  }
+  const video = document.getElementById('scanVideo');
+  if (!video || !scanStream) return;
+  try {
+    const barcodes = await barcodeDetector.detect(video);
+    if (barcodes.length > 0) {
+      const code = barcodes[0].rawValue;
+      stopCamera();
+      lookupBarcode(code);
+      return;
+    }
+  } catch(e) {}
+  scanAnimFrame = requestAnimationFrame(nativeScan);
+}
+
+// Fallback: ZXing for Safari/iOS
+async function loadZxing() {
+  if (window.ZXing) return window.ZXing;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js';
+    s.onload = () => resolve(window.ZXing);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// Override scanLoop to use ZXing on Safari
+(async () => {
+  if (typeof BarcodeDetector === 'undefined') {
+    try {
+      const ZXing = await loadZxing();
+      const hints = new Map();
+      const formats = [
+        ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+        ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
+      ];
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+      const reader = new ZXing.MultiFormatReader();
+      reader.setHints(hints);
+
+      // Replace scanLoop with ZXing version
+      window.scanLoop = function() {
+        const video = document.getElementById('scanVideo');
+        if (!video || !scanStream) return;
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          scanCanvas.width = video.videoWidth;
+          scanCanvas.height = video.videoHeight;
+          scanCtx.drawImage(video, 0, 0);
+          try {
+            const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+            const luminance = new ZXing.RGBLuminanceSource(imageData.data, scanCanvas.width, scanCanvas.height);
+            const binary = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+            const result = reader.decode(binary);
+            if (result) {
+              stopCamera();
+              lookupBarcode(result.getText());
+              return;
+            }
+          } catch(e) { /* not found yet */ }
+        }
+        scanAnimFrame = requestAnimationFrame(window.scanLoop);
+      };
+    } catch(e) {
+      console.warn('ZXing failed to load, using native only');
+    }
+  }
+})();
+
+async function lookupBarcode(barcode) {
+  document.getElementById('scanViewport').style.display = 'none';
+  document.getElementById('scanStatus').textContent = `found ${barcode} · looking up…`;
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const data = await res.json();
+    if (data.status !== 1 || !data.product) {
+      document.getElementById('scanStatus').textContent = 'product not found in database — try another barcode';
+      document.getElementById('scanViewport').style.display = 'block';
+      startCamera();
+      return;
+    }
+    const p = data.product;
+    const nut = p.nutriments || {};
+    const kcalPer100 = Math.round(nut['energy-kcal_100g'] || nut['energy_100g'] / 4.184 || 0);
+    currentProduct = {
+      name: p.product_name || p.product_name_en || 'Unknown product',
+      brand: p.brands || '',
+      kcalPer100,
+      fat: Math.round(nut.fat_100g || 0),
+      carbs: Math.round(nut.carbohydrates_100g || 0),
+      protein: Math.round(nut.proteins_100g || 0),
+      servingG: Math.round(p.serving_quantity || 100),
+    };
+    showProduct();
+  } catch(e) {
+    document.getElementById('scanStatus').textContent = 'lookup failed — check connection';
+    document.getElementById('scanViewport').style.display = 'block';
+    startCamera();
+  }
+}
+
+function showProduct() {
+  const p = currentProduct;
+  document.getElementById('scanStatus').textContent = '';
+  const result = document.getElementById('productResult');
+  result.style.display = 'block';
+  const cal = Math.round(p.kcalPer100 * p.servingG / 100);
+  document.getElementById('productCard').innerHTML = `
+    <div class="product-name">${p.name}</div>
+    <div class="product-brand">${p.brand || 'unknown brand'}</div>
+    <div class="product-macros">
+      <div class="macro-pill highlight">${p.kcalPer100} kcal/100g</div>
+      <div class="macro-pill">fat ${p.fat}g</div>
+      <div class="macro-pill">carbs ${p.carbs}g</div>
+      <div class="macro-pill">protein ${p.protein}g</div>
+    </div>
+    <div class="serving-row">
+      <input class="serving-input" id="servingInput" type="number" value="${p.servingG}" min="1" max="9999" oninput="updateServing()" />
+      <div class="serving-label">grams</div>
+      <div class="serving-total" id="servingTotal">${cal} kcal</div>
+    </div>
+    <div class="product-actions">
+      <div class="rescan-btn" onclick="rescan()">scan again</div>
+      <div class="add-food-btn" onclick="addScannedFood()">add as snack</div>
+    </div>
+  `;
+}
+
+function updateServing() {
+  if (!currentProduct) return;
+  const g = parseInt(document.getElementById('servingInput').value) || 0;
+  const cal = Math.round(currentProduct.kcalPer100 * g / 100);
+  document.getElementById('servingTotal').textContent = cal + ' kcal';
+}
+
+function addScannedFood() {
+  if (!currentProduct) return;
+  const g = parseInt(document.getElementById('servingInput').value) || 0;
+  const cal = Math.round(currentProduct.kcalPer100 * g / 100);
+  if (cal <= 0) return;
+  const name = currentProduct.name + (g !== 100 ? ` (${g}g)` : '');
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  if (viewDate === todayKey()) {
+    const today = now.toDateString();
+    if (state.lastDay !== today) {
+      state.streak = state.lastDay === new Date(now-86400000).toDateString() ? state.streak+1 : 1;
+      state.lastDay = today;
+    }
+  }
+  state.log.push({type:'spend', name, cal, dateKey: viewDate, time: timeStr});
+  save(); render();
+  closeScanner();
+}
+
+function rescan() {
+  currentProduct = null;
+  document.getElementById('productResult').style.display = 'none';
+  document.getElementById('scanViewport').style.display = 'block';
+  document.getElementById('scanStatus').textContent = 'looking for barcode…';
+  startCamera();
+}
 </script>
 </body>
 </html>
