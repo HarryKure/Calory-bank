@@ -112,20 +112,17 @@
   /* Scanner modal */
   .scan-modal-bg { display: none; position: fixed; inset: 0; background: #000; z-index: 200; flex-direction: column; }
   .scan-modal-bg.open { display: flex; }
-  .scan-header { display: flex; align-items: center; justify-content: space-between; padding: env(safe-area-inset-top, 44px) 20px 16px; padding-top: max(44px, env(safe-area-inset-top)); background: #000; flex-shrink: 0; }
-  .scan-header h2 { font-size: 18px; font-weight: 700; color: var(--text); }
-  .scan-close { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 22px; color: var(--text); flex-shrink: 0; -webkit-tap-highlight-color: rgba(255,255,255,0.1); }
-  .scan-viewport { flex: 1; position: relative; overflow: hidden; min-height: 200px; background: #111; }
-  .scan-viewport video { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; object-fit: cover !important; }
-  #scannerDiv { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
-  #scannerDiv > div { display: none !important; } /* hide html5-qrcode default UI chrome */
-  .scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-  .scan-frame { width: 240px; height: 140px; border: 2px solid var(--green); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55); position: relative; overflow: hidden; }
-  .scan-frame::after { content: ''; position: absolute; left: 10px; right: 10px; height: 2px; background: var(--green); opacity: 0.8; top: 0; animation: scanline 2s ease-in-out infinite; }
+  .scan-header { display: flex; align-items: center; justify-content: space-between; padding: 52px 20px 16px; background: #000; flex-shrink: 0; }
+  .scan-header h2 { font-size: 18px; font-weight: 700; color: #fff; }
+  .scan-close { background: #222; border: 0.5px solid rgba(255,255,255,0.2); border-radius: 10px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; color: #fff; flex-shrink: 0; }
+  .scan-viewport { flex: 1; position: relative; overflow: hidden; background: #111; }
+  #scanVideo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+  .scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2; }
+  .scan-frame { width: 240px; height: 140px; border: 2px solid var(--green); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+  .scan-frame::after { content: ''; position: absolute; left: 10px; right: 10px; height: 2px; background: var(--green); top: 0; animation: scanline 2s ease-in-out infinite; }
   @keyframes scanline { 0%,100% { top: 0; } 50% { top: calc(100% - 2px); } }
-  .scan-hint { position: absolute; bottom: 24px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.5); }
-  .scan-status { padding: 14px 20px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); text-align: center; min-height: 44px; background: #000; flex-shrink: 0; }
-
+  .scan-hint { position: absolute; bottom: 24px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 12px; color: rgba(255,255,255,0.5); z-index: 2; }
+  .scan-status { padding: 14px 20px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); text-align: center; min-height: 48px; background: #000; flex-shrink: 0; }
   /* Product result */
   .product-card { margin: 0 20px 16px; background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 16px; }
   .product-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
@@ -277,14 +274,14 @@
     <button class="scan-close" onclick="closeScanner()" type="button">×</button>
   </div>
   <div class="scan-viewport" id="scanViewport">
-    <!-- html5-qrcode renders video here dynamically -->
-    <div class="scan-overlay" style="pointer-events:none;">
+    <video id="scanVideo" autoplay playsinline muted></video>
+    <div class="scan-overlay">
       <div class="scan-frame"></div>
     </div>
     <div class="scan-hint">point at a food barcode</div>
   </div>
-  <div class="scan-status" id="scanStatus">looking for barcode…</div>
-  <div id="productResult" style="display:none; overflow-y:auto; background:#000; padding-bottom: env(safe-area-inset-bottom);">
+  <div class="scan-status" id="scanStatus">tap scan to start</div>
+  <div id="productResult" style="display:none; overflow-y:auto; background:#000; padding-bottom:24px;">
     <div class="product-card" id="productCard"></div>
   </div>
 </div>
@@ -604,136 +601,151 @@ render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
 // ── Barcode Scanner ───────────────────────────────────────
-let html5QrCode = null;
+let scanStream = null;
+let scanRaf = null;
+let scanCanvas = document.createElement('canvas');
+let scanCtx = scanCanvas.getContext('2d', {willReadFrequently: true});
 let currentProduct = null;
-let scannerRunning = false;
+let barcodeDetector = null;
+let zxingReader = null;
 
 function openScanner() {
   document.getElementById('scanModalBg').classList.add('open');
   document.getElementById('productResult').style.display = 'none';
   document.getElementById('scanViewport').style.display = 'block';
-  document.getElementById('scanStatus').textContent = 'starting camera…';
-  startScanner();
+  document.getElementById('scanStatus').textContent = 'requesting camera…';
+  startCamera();
 }
 
 function closeScanner() {
-  stopScanner();
+  stopCamera();
   document.getElementById('scanModalBg').classList.remove('open');
-  document.getElementById('scanViewport').style.display = 'block';
   document.getElementById('productResult').style.display = 'none';
-  document.getElementById('scanStatus').textContent = 'looking for barcode…';
+  document.getElementById('scanViewport').style.display = 'block';
   currentProduct = null;
 }
 
-async function loadHtml5QrCode() {
-  if (window.Html5Qrcode) return;
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
+function stopCamera() {
+  if (scanRaf) { cancelAnimationFrame(scanRaf); scanRaf = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  const v = document.getElementById('scanVideo');
+  if (v) { v.pause(); v.srcObject = null; }
 }
 
-async function startScanner() {
+async function startCamera() {
   try {
-    await loadHtml5QrCode();
-
-    // Clear old scanner div and recreate fresh
-    const viewport = document.getElementById('scanViewport');
-    let scanDiv = document.getElementById('scannerDiv');
-    if (scanDiv) scanDiv.remove();
-    scanDiv = document.createElement('div');
-    scanDiv.id = 'scannerDiv';
-    scanDiv.style.cssText = 'width:100%;height:100%;';
-    // Insert before overlay
-    viewport.insertBefore(scanDiv, viewport.querySelector('.scan-overlay'));
-
-    html5QrCode = new Html5Qrcode('scannerDiv', { verbose: false });
-
-    const config = {
-      fps: 10,
-      qrbox: { width: 240, height: 140 },
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.CODE_39,
-      ],
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    const constraints = {
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
     };
-
-    await html5QrCode.start(
-      { facingMode: 'environment' },
-      config,
-      (decodedText) => {
-        // Success
-        stopScanner();
-        lookupBarcode(decodedText);
-      },
-      () => { /* scan attempt, no result yet — ignore */ }
-    );
-
-    scannerRunning = true;
-    document.getElementById('scanStatus').textContent = 'point at a food barcode…';
-
-    // Hide the default html5-qrcode UI chrome (it adds its own elements)
-    setTimeout(() => {
-      const scannerEl = document.getElementById('scannerDiv');
-      if (scannerEl) {
-        // Remove any border/dashboard added by the library
-        const img = scannerEl.querySelector('img');
-        if (img) img.style.display = 'none';
-        const span = scannerEl.querySelector('span');
-        if (span) span.style.display = 'none';
-      }
-    }, 500);
-
-  } catch(e) {
-    console.error('Scanner error:', e);
-    const msg = e && e.toString().includes('Permission')
-      ? 'camera permission denied — go to Settings > Safari > Camera'
-      : 'could not start camera: ' + (e.message || e);
-    document.getElementById('scanStatus').textContent = msg;
+    scanStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('scanVideo');
+    video.srcObject = scanStream;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('muted', '');
+    video.muted = true;
+    // Critical for iOS: must call play() after srcObject is set
+    video.play().then(() => {
+      document.getElementById('scanStatus').textContent = 'looking for barcode…';
+      initDecoder();
+    }).catch(err => {
+      setError('play() failed: ' + err.message);
+    });
+  } catch(err) {
+    setError('Camera error: ' + err.message);
   }
 }
 
-async function stopScanner() {
-  scannerRunning = false;
-  if (html5QrCode) {
+function setError(msg) {
+  document.getElementById('scanStatus').textContent = msg;
+}
+
+async function initDecoder() {
+  // Try native BarcodeDetector first (Android Chrome)
+  if (typeof BarcodeDetector !== 'undefined') {
     try {
-      const state = html5QrCode.getState();
-      if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
-        await html5QrCode.stop();
-      }
+      barcodeDetector = new BarcodeDetector({
+        formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39']
+      });
+      scanRaf = requestAnimationFrame(tickNative);
+      return;
     } catch(e) {}
-    try { html5QrCode.clear(); } catch(e) {}
-    html5QrCode = null;
   }
+  // Fallback: ZXing (iOS Safari)
+  try {
+    await new Promise((res, rej) => {
+      if (window.ZXing) { res(); return; }
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
+    ]);
+    zxingReader = new ZXing.MultiFormatReader();
+    zxingReader.setHints(hints);
+    scanRaf = requestAnimationFrame(tickZxing);
+  } catch(e) {
+    setError('decoder failed to load — try Chrome');
+  }
+}
+
+async function tickNative() {
+  const video = document.getElementById('scanVideo');
+  if (!scanStream || !video || video.readyState < 2) {
+    scanRaf = requestAnimationFrame(tickNative); return;
+  }
+  try {
+    const results = await barcodeDetector.detect(video);
+    if (results.length > 0) { onBarcode(results[0].rawValue); return; }
+  } catch(e) {}
+  scanRaf = requestAnimationFrame(tickNative);
+}
+
+function tickZxing() {
+  const video = document.getElementById('scanVideo');
+  if (!scanStream || !video || video.readyState < 2) {
+    scanRaf = requestAnimationFrame(tickZxing); return;
+  }
+  const w = video.videoWidth, h = video.videoHeight;
+  if (!w || !h) { scanRaf = requestAnimationFrame(tickZxing); return; }
+  scanCanvas.width = w; scanCanvas.height = h;
+  scanCtx.drawImage(video, 0, 0, w, h);
+  try {
+    const img = scanCtx.getImageData(0, 0, w, h);
+    const src = new ZXing.RGBLuminanceSource(img.data, w, h);
+    const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+    const result = zxingReader.decode(bmp);
+    if (result) { onBarcode(result.getText()); return; }
+  } catch(e) { /* NotFoundException is normal — keep scanning */ }
+  scanRaf = requestAnimationFrame(tickZxing);
+}
+
+function onBarcode(code) {
+  stopCamera();
+  document.getElementById('scanViewport').style.display = 'none';
+  document.getElementById('scanStatus').textContent = 'found ' + code + ' · looking up…';
+  lookupBarcode(code);
 }
 
 async function lookupBarcode(barcode) {
-  document.getElementById('scanViewport').style.display = 'none';
-  document.getElementById('scanStatus').textContent = `found ${barcode} · looking up…`;
   try {
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,brands,nutriments,serving_quantity`);
     const data = await res.json();
     if (data.status !== 1 || !data.product) {
-      document.getElementById('scanStatus').textContent = 'product not found — try another barcode';
+      document.getElementById('scanStatus').textContent = 'product not found — tap to scan again';
       document.getElementById('scanViewport').style.display = 'block';
-      startScanner();
+      document.getElementById('scanViewport').onclick = () => { document.getElementById('scanViewport').onclick = null; startCamera(); };
       return;
     }
     const p = data.product;
     const nut = p.nutriments || {};
-    const kcalPer100 = Math.round(
-      nut['energy-kcal_100g'] ||
-      (nut['energy-kcal'] ? nut['energy-kcal'] : 0) ||
-      (nut['energy_100g'] ? nut['energy_100g'] / 4.184 : 0)
-    );
+    const kcalPer100 = Math.round(nut['energy-kcal_100g'] || (nut['energy_100g'] / 4.184) || 0);
     currentProduct = {
       name: p.product_name || p.product_name_en || 'Unknown product',
       brand: p.brands || '',
@@ -746,22 +758,19 @@ async function lookupBarcode(barcode) {
     showProduct();
   } catch(e) {
     document.getElementById('scanStatus').textContent = 'lookup failed — check connection';
-    document.getElementById('scanViewport').style.display = 'block';
-    startScanner();
   }
 }
 
 function showProduct() {
   const p = currentProduct;
   document.getElementById('scanStatus').textContent = '';
-  const result = document.getElementById('productResult');
-  result.style.display = 'block';
+  document.getElementById('productResult').style.display = 'block';
   const cal = Math.round(p.kcalPer100 * p.servingG / 100);
   document.getElementById('productCard').innerHTML = `
     <div class="product-name">${p.name}</div>
     <div class="product-brand">${p.brand || 'unknown brand'}</div>
     <div class="product-macros">
-      <div class="macro-pill highlight">${p.kcalPer100} kcal/100g</div>
+      <div class="macro-pill highlight">${p.kcalPer100} kcal / 100g</div>
       <div class="macro-pill">fat ${p.fat}g</div>
       <div class="macro-pill">carbs ${p.carbs}g</div>
       <div class="macro-pill">protein ${p.protein}g</div>
@@ -809,8 +818,9 @@ function rescan() {
   document.getElementById('productResult').style.display = 'none';
   document.getElementById('scanViewport').style.display = 'block';
   document.getElementById('scanStatus').textContent = 'starting camera…';
-  startScanner();
+  startCamera();
 }
+
 </script>
 </body>
 </html>
