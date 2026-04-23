@@ -115,8 +115,10 @@
   .scan-header { display: flex; align-items: center; justify-content: space-between; padding: env(safe-area-inset-top, 44px) 20px 16px; padding-top: max(44px, env(safe-area-inset-top)); background: #000; flex-shrink: 0; }
   .scan-header h2 { font-size: 18px; font-weight: 700; color: var(--text); }
   .scan-close { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 22px; color: var(--text); flex-shrink: 0; -webkit-tap-highlight-color: rgba(255,255,255,0.1); }
-  .scan-viewport { flex: 1; position: relative; overflow: hidden; min-height: 200px; }
-  #scanVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .scan-viewport { flex: 1; position: relative; overflow: hidden; min-height: 200px; background: #111; }
+  .scan-viewport video { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; object-fit: cover !important; }
+  #scannerDiv { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+  #scannerDiv > div { display: none !important; } /* hide html5-qrcode default UI chrome */
   .scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
   .scan-frame { width: 240px; height: 140px; border: 2px solid var(--green); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55); position: relative; overflow: hidden; }
   .scan-frame::after { content: ''; position: absolute; left: 10px; right: 10px; height: 2px; background: var(--green); opacity: 0.8; top: 0; animation: scanline 2s ease-in-out infinite; }
@@ -275,8 +277,8 @@
     <button class="scan-close" onclick="closeScanner()" type="button">×</button>
   </div>
   <div class="scan-viewport" id="scanViewport">
-    <video id="scanVideo" autoplay playsinline muted webkit-playsinline></video>
-    <div class="scan-overlay">
+    <!-- html5-qrcode renders video here dynamically -->
+    <div class="scan-overlay" style="pointer-events:none;">
       <div class="scan-frame"></div>
     </div>
     <div class="scan-hint">point at a food barcode</div>
@@ -602,24 +604,20 @@ render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
 // ── Barcode Scanner ───────────────────────────────────────
-let scanStream = null;
-let scanAnimFrame = null;
-let scanCanvas = null;
-let scanCtx = null;
+let html5QrCode = null;
 let currentProduct = null;
+let scannerRunning = false;
 
 function openScanner() {
   document.getElementById('scanModalBg').classList.add('open');
   document.getElementById('productResult').style.display = 'none';
-  document.getElementById('scanStatus').textContent = 'starting camera…';
   document.getElementById('scanViewport').style.display = 'block';
-  startCamera();
+  document.getElementById('scanStatus').textContent = 'starting camera…';
+  startScanner();
 }
 
 function closeScanner() {
-  stopCamera();
-  const video = document.getElementById('scanVideo');
-  video.srcObject = null;
+  stopScanner();
   document.getElementById('scanModalBg').classList.remove('open');
   document.getElementById('scanViewport').style.display = 'block';
   document.getElementById('productResult').style.display = 'none';
@@ -627,150 +625,115 @@ function closeScanner() {
   currentProduct = null;
 }
 
-async function startCamera() {
-  try {
-    scanStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    });
-    const video = document.getElementById('scanVideo');
-    video.srcObject = scanStream;
-    // iOS requires explicit play() call
-    await video.play().catch(()=>{});
-    // Wait for video to have dimensions
-    await new Promise(resolve => {
-      if (video.videoWidth > 0) { resolve(); return; }
-      video.addEventListener('loadedmetadata', resolve, { once: true });
-      setTimeout(resolve, 2000); // fallback
-    });
-    scanCanvas = document.createElement('canvas');
-    scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
-    document.getElementById('scanStatus').textContent = 'looking for barcode…';
-    if (typeof BarcodeDetector !== 'undefined') {
-      nativeScan();
-    } else {
-      scanLoop();
-    }
-  } catch(e) {
-    console.error('Camera error:', e);
-    document.getElementById('scanStatus').textContent = 'camera access denied — check permissions in Settings';
-  }
-}
-
-function stopCamera() {
-  if (scanAnimFrame) { cancelAnimationFrame(scanAnimFrame); scanAnimFrame = null; }
-  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
-}
-
-function scanLoop() {
-  const video = document.getElementById('scanVideo');
-  if (!video || !scanStream) return;
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    scanCanvas.width = video.videoWidth;
-    scanCanvas.height = video.videoHeight;
-    scanCtx.drawImage(video, 0, 0);
-    try {
-      const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-      if (typeof BarcodeDetector !== 'undefined') {
-        // Native BarcodeDetector (Chrome Android, some others)
-        nativeScan(imageData);
-        return;
-      }
-    } catch(e) {}
-  }
-  scanAnimFrame = requestAnimationFrame(scanLoop);
-}
-
-// Native BarcodeDetector API (Chrome/Android)
-let barcodeDetector = null;
-async function nativeScan() {
-  if (!barcodeDetector) {
-    barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
-  }
-  const video = document.getElementById('scanVideo');
-  if (!video || !scanStream) return;
-  try {
-    const barcodes = await barcodeDetector.detect(video);
-    if (barcodes.length > 0) {
-      const code = barcodes[0].rawValue;
-      stopCamera();
-      lookupBarcode(code);
-      return;
-    }
-  } catch(e) {}
-  scanAnimFrame = requestAnimationFrame(nativeScan);
-}
-
-// Fallback: ZXing for Safari/iOS
-async function loadZxing() {
-  if (window.ZXing) return window.ZXing;
+async function loadHtml5QrCode() {
+  if (window.Html5Qrcode) return;
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js';
-    s.onload = () => resolve(window.ZXing);
+    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    s.onload = resolve;
     s.onerror = reject;
     document.head.appendChild(s);
   });
 }
 
-// Override scanLoop to use ZXing on Safari
-(async () => {
-  if (typeof BarcodeDetector === 'undefined') {
-    try {
-      const ZXing = await loadZxing();
-      const hints = new Map();
-      const formats = [
-        ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-        ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
-        ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
-      ];
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-      const reader = new ZXing.MultiFormatReader();
-      reader.setHints(hints);
+async function startScanner() {
+  try {
+    await loadHtml5QrCode();
 
-      // Replace scanLoop with ZXing version
-      window.scanLoop = function() {
-        const video = document.getElementById('scanVideo');
-        if (!video || !scanStream) return;
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          scanCanvas.width = video.videoWidth;
-          scanCanvas.height = video.videoHeight;
-          scanCtx.drawImage(video, 0, 0);
-          try {
-            const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-            const luminance = new ZXing.RGBLuminanceSource(imageData.data, scanCanvas.width, scanCanvas.height);
-            const binary = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-            const result = reader.decode(binary);
-            if (result) {
-              stopCamera();
-              lookupBarcode(result.getText());
-              return;
-            }
-          } catch(e) { /* not found yet */ }
-        }
-        scanAnimFrame = requestAnimationFrame(window.scanLoop);
-      };
-    } catch(e) {
-      console.warn('ZXing failed to load, using native only');
-    }
+    // Clear old scanner div and recreate fresh
+    const viewport = document.getElementById('scanViewport');
+    let scanDiv = document.getElementById('scannerDiv');
+    if (scanDiv) scanDiv.remove();
+    scanDiv = document.createElement('div');
+    scanDiv.id = 'scannerDiv';
+    scanDiv.style.cssText = 'width:100%;height:100%;';
+    // Insert before overlay
+    viewport.insertBefore(scanDiv, viewport.querySelector('.scan-overlay'));
+
+    html5QrCode = new Html5Qrcode('scannerDiv', { verbose: false });
+
+    const config = {
+      fps: 10,
+      qrbox: { width: 240, height: 140 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+      ],
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    };
+
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      config,
+      (decodedText) => {
+        // Success
+        stopScanner();
+        lookupBarcode(decodedText);
+      },
+      () => { /* scan attempt, no result yet — ignore */ }
+    );
+
+    scannerRunning = true;
+    document.getElementById('scanStatus').textContent = 'point at a food barcode…';
+
+    // Hide the default html5-qrcode UI chrome (it adds its own elements)
+    setTimeout(() => {
+      const scannerEl = document.getElementById('scannerDiv');
+      if (scannerEl) {
+        // Remove any border/dashboard added by the library
+        const img = scannerEl.querySelector('img');
+        if (img) img.style.display = 'none';
+        const span = scannerEl.querySelector('span');
+        if (span) span.style.display = 'none';
+      }
+    }, 500);
+
+  } catch(e) {
+    console.error('Scanner error:', e);
+    const msg = e && e.toString().includes('Permission')
+      ? 'camera permission denied — go to Settings > Safari > Camera'
+      : 'could not start camera: ' + (e.message || e);
+    document.getElementById('scanStatus').textContent = msg;
   }
-})();
+}
+
+async function stopScanner() {
+  scannerRunning = false;
+  if (html5QrCode) {
+    try {
+      const state = html5QrCode.getState();
+      if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+        await html5QrCode.stop();
+      }
+    } catch(e) {}
+    try { html5QrCode.clear(); } catch(e) {}
+    html5QrCode = null;
+  }
+}
 
 async function lookupBarcode(barcode) {
   document.getElementById('scanViewport').style.display = 'none';
   document.getElementById('scanStatus').textContent = `found ${barcode} · looking up…`;
   try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,brands,nutriments,serving_quantity`);
     const data = await res.json();
     if (data.status !== 1 || !data.product) {
-      document.getElementById('scanStatus').textContent = 'product not found in database — try another barcode';
+      document.getElementById('scanStatus').textContent = 'product not found — try another barcode';
       document.getElementById('scanViewport').style.display = 'block';
-      startCamera();
+      startScanner();
       return;
     }
     const p = data.product;
     const nut = p.nutriments || {};
-    const kcalPer100 = Math.round(nut['energy-kcal_100g'] || nut['energy_100g'] / 4.184 || 0);
+    const kcalPer100 = Math.round(
+      nut['energy-kcal_100g'] ||
+      (nut['energy-kcal'] ? nut['energy-kcal'] : 0) ||
+      (nut['energy_100g'] ? nut['energy_100g'] / 4.184 : 0)
+    );
     currentProduct = {
       name: p.product_name || p.product_name_en || 'Unknown product',
       brand: p.brands || '',
@@ -778,13 +741,13 @@ async function lookupBarcode(barcode) {
       fat: Math.round(nut.fat_100g || 0),
       carbs: Math.round(nut.carbohydrates_100g || 0),
       protein: Math.round(nut.proteins_100g || 0),
-      servingG: Math.round(p.serving_quantity || 100),
+      servingG: Math.round(parseFloat(p.serving_quantity) || 100),
     };
     showProduct();
   } catch(e) {
     document.getElementById('scanStatus').textContent = 'lookup failed — check connection';
     document.getElementById('scanViewport').style.display = 'block';
-    startCamera();
+    startScanner();
   }
 }
 
@@ -818,8 +781,7 @@ function showProduct() {
 function updateServing() {
   if (!currentProduct) return;
   const g = parseInt(document.getElementById('servingInput').value) || 0;
-  const cal = Math.round(currentProduct.kcalPer100 * g / 100);
-  document.getElementById('servingTotal').textContent = cal + ' kcal';
+  document.getElementById('servingTotal').textContent = Math.round(currentProduct.kcalPer100 * g / 100) + ' kcal';
 }
 
 function addScannedFood() {
@@ -846,8 +808,8 @@ function rescan() {
   currentProduct = null;
   document.getElementById('productResult').style.display = 'none';
   document.getElementById('scanViewport').style.display = 'block';
-  document.getElementById('scanStatus').textContent = 'looking for barcode…';
-  startCamera();
+  document.getElementById('scanStatus').textContent = 'starting camera…';
+  startScanner();
 }
 </script>
 </body>
