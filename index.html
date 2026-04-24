@@ -280,6 +280,14 @@
     </div>
     <div class="scan-hint">point at a food barcode</div>
   </div>
+  <!-- iOS fallback: photo capture -->
+  <div id="photoCaptureUI" style="display:none; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:20px; background:#000; padding:32px 24px;">
+    <div style="font-size:48px;">📷</div>
+    <div style="font-family:var(--font-head); font-size:17px; font-weight:700; color:#fff; text-align:center;">Take a photo of the barcode</div>
+    <div style="font-family:var(--font-mono); font-size:12px; color:#888; text-align:center; max-width:260px;">Point your camera at the barcode on the packaging, then tap the button below</div>
+    <button onclick="capturePhoto()" style="background:var(--green); border:none; border-radius:14px; padding:16px 32px; font-family:var(--font-head); font-size:16px; font-weight:700; color:#0f0f0f; cursor:pointer; width:100%; max-width:280px;">Open Camera</button>
+  </div>
+  <input type="file" id="barcodeFileInput" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)" />
   <div class="scan-status" id="scanStatus">tap scan to start</div>
   <div id="productResult" style="display:none; overflow-y:auto; background:#000; padding-bottom:24px;">
     <div class="product-card" id="productCard"></div>
@@ -662,18 +670,45 @@ function setError(msg) {
 }
 
 async function initDecoder() {
-  // Try native BarcodeDetector first (Android Chrome)
+  // Native BarcodeDetector — works on Android Chrome and desktop
   if (typeof BarcodeDetector !== 'undefined') {
     try {
       barcodeDetector = new BarcodeDetector({
         formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39']
       });
+      document.getElementById('scanStatus').textContent = 'looking for barcode…';
       scanRaf = requestAnimationFrame(tickNative);
       return;
     } catch(e) {}
   }
-  // Fallback: ZXing (iOS Safari)
+  // iOS Safari: BarcodeDetector not available
+  // Switch to photo-capture mode — more reliable than canvas video decode
+  stopCamera();
+  showPhotoCaptureMode();
+}
+
+function showPhotoCaptureMode() {
+  // Hide live video viewport, show photo capture UI instead
+  document.getElementById('scanViewport').style.display = 'none';
+  document.getElementById('scanStatus').textContent = '';
+  // Show capture button in place of video
+  const photoUI = document.getElementById('photoCaptureUI');
+  if (photoUI) photoUI.style.display = 'flex';
+}
+
+async function capturePhoto() {
+  const input = document.getElementById('barcodeFileInput');
+  input.click();
+}
+
+async function onPhotoSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('scanStatus').textContent = 'reading barcode…';
+  document.getElementById('photoCaptureUI').style.display = 'none';
+
   try {
+    // Load ZXing
     await new Promise((res, rej) => {
       if (window.ZXing) { res(); return; }
       const s = document.createElement('script');
@@ -681,17 +716,46 @@ async function initDecoder() {
       s.onload = res; s.onerror = rej;
       document.head.appendChild(s);
     });
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
-    ]);
-    zxingReader = new ZXing.MultiFormatReader();
-    zxingReader.setHints(hints);
-    scanRaf = requestAnimationFrame(tickZxing);
+
+    // Draw image to canvas and decode
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      // Use full image resolution for best decode
+      scanCanvas.width = img.width;
+      scanCanvas.height = img.height;
+      scanCtx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      input.value = '';
+
+      try {
+        const imageData = scanCtx.getImageData(0, 0, img.width, img.height);
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+          ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+          ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+          ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
+        ]);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        const reader = new ZXing.MultiFormatReader();
+        reader.setHints(hints);
+        const src = new ZXing.RGBLuminanceSource(imageData.data, img.width, img.height);
+        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+        const result = reader.decode(bmp);
+        onBarcode(result.getText());
+      } catch(e) {
+        document.getElementById('scanStatus').textContent = 'barcode not recognised — try again with better lighting';
+        document.getElementById('photoCaptureUI').style.display = 'flex';
+      }
+    };
+    img.onerror = () => {
+      document.getElementById('scanStatus').textContent = 'could not read image — try again';
+      document.getElementById('photoCaptureUI').style.display = 'flex';
+    };
+    img.src = url;
   } catch(e) {
-    setError('decoder failed to load — try Chrome');
+    document.getElementById('scanStatus').textContent = 'decoder failed to load — check connection';
+    document.getElementById('photoCaptureUI').style.display = 'flex';
   }
 }
 
@@ -705,25 +769,6 @@ async function tickNative() {
     if (results.length > 0) { onBarcode(results[0].rawValue); return; }
   } catch(e) {}
   scanRaf = requestAnimationFrame(tickNative);
-}
-
-function tickZxing() {
-  const video = document.getElementById('scanVideo');
-  if (!scanStream || !video || video.readyState < 2) {
-    scanRaf = requestAnimationFrame(tickZxing); return;
-  }
-  const w = video.videoWidth, h = video.videoHeight;
-  if (!w || !h) { scanRaf = requestAnimationFrame(tickZxing); return; }
-  scanCanvas.width = w; scanCanvas.height = h;
-  scanCtx.drawImage(video, 0, 0, w, h);
-  try {
-    const img = scanCtx.getImageData(0, 0, w, h);
-    const src = new ZXing.RGBLuminanceSource(img.data, w, h);
-    const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
-    const result = zxingReader.decode(bmp);
-    if (result) { onBarcode(result.getText()); return; }
-  } catch(e) { /* NotFoundException is normal — keep scanning */ }
-  scanRaf = requestAnimationFrame(tickZxing);
 }
 
 function onBarcode(code) {
@@ -816,9 +861,17 @@ function addScannedFood() {
 function rescan() {
   currentProduct = null;
   document.getElementById('productResult').style.display = 'none';
-  document.getElementById('scanViewport').style.display = 'block';
-  document.getElementById('scanStatus').textContent = 'starting camera…';
-  startCamera();
+  document.getElementById('scanStatus').textContent = 'requesting camera…';
+  // Re-check which mode we're in
+  if (typeof BarcodeDetector !== 'undefined') {
+    document.getElementById('scanViewport').style.display = 'block';
+    document.getElementById('photoCaptureUI').style.display = 'none';
+    startCamera();
+  } else {
+    document.getElementById('scanViewport').style.display = 'none';
+    document.getElementById('photoCaptureUI').style.display = 'flex';
+    document.getElementById('scanStatus').textContent = '';
+  }
 }
 
 </script>
