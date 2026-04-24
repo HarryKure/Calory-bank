@@ -601,13 +601,13 @@ render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
 // ── Barcode Scanner ───────────────────────────────────────
-let scanStream = null;
-let scanRaf = null;
-let scanCanvas = document.createElement('canvas');
-let scanCtx = scanCanvas.getContext('2d', {willReadFrequently: true});
-let currentProduct = null;
-let barcodeDetector = null;
-let zxingReader = null;
+var scanStream = null;
+var scanRaf = null;
+var scanCanvas = document.createElement('canvas');
+var scanCtx = scanCanvas.getContext('2d', {willReadFrequently: true});
+var currentProduct = null;
+var barcodeDetector = null;
+var zxingReader = null;
 
 function openScanner() {
   document.getElementById('scanModalBg').classList.add('open');
