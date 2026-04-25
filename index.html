@@ -844,12 +844,18 @@ async function onPhotoSelected(input) {
     const img = await new Promise((res, rej) => {
       const image = new Image();
       image.onload = () => res(image);
-      image.onerror = rej;
+      image.onerror = (e) => rej(new Error('image load failed'));
       image.src = dataUrl;
+      // If already loaded (cached)
+      if (image.complete && image.naturalWidth > 0) res(image);
     });
 
-    scanCanvas.width = img.naturalWidth;
-    scanCanvas.height = img.naturalHeight;
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error('image has no dimensions');
+
+    scanCanvas.width = w;
+    scanCanvas.height = h;
     scanCtx.drawImage(img, 0, 0);
 
     // Try BarcodeDetector on canvas (iOS 17+)
