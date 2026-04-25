@@ -744,17 +744,27 @@ var scanCanvas = document.createElement('canvas');
 var scanCtx = scanCanvas.getContext('2d', {willReadFrequently: true});
 var currentProduct = null;
 var barcodeDetector = null;
-var zxingReader = null;
 var lastScanTime = 0;
 var scanActive = false;
+var usePhotoMode = false;
 
 function openScanner() {
   document.getElementById('scanModalBg').classList.add('open');
   document.getElementById('productResult').style.display = 'none';
-  document.getElementById('photoCaptureUI').style.display = 'none';
-  document.getElementById('scanViewport').style.display = 'block';
-  document.getElementById('scanStatus').textContent = 'requesting camera…';
-  startCamera();
+  document.getElementById('scanStatus').textContent = '';
+
+  // Check if BarcodeDetector is available (Chrome Android + Safari iOS 17+)
+  if (typeof BarcodeDetector !== 'undefined') {
+    usePhotoMode = false;
+    document.getElementById('photoCaptureUI').style.display = 'none';
+    document.getElementById('scanViewport').style.display = 'block';
+    startCamera();
+  } else {
+    // iOS 16 and below: use photo capture mode
+    usePhotoMode = true;
+    document.getElementById('scanViewport').style.display = 'none';
+    document.getElementById('photoCaptureUI').style.display = 'flex';
+  }
 }
 
 function closeScanner() {
@@ -763,6 +773,7 @@ function closeScanner() {
   document.getElementById('productResult').style.display = 'none';
   document.getElementById('scanViewport').style.display = 'block';
   document.getElementById('photoCaptureUI').style.display = 'none';
+  document.getElementById('scanStatus').textContent = '';
   currentProduct = null;
 }
 
@@ -776,48 +787,25 @@ function stopCamera() {
 
 async function startCamera() {
   try {
-    // Request high resolution — crucial for barcode detection
-    const constraints = {
+    scanStream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      }
-    };
-    scanStream = await navigator.mediaDevices.getUserMedia(constraints);
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
     const video = document.getElementById('scanVideo');
     video.srcObject = scanStream;
-    video.setAttribute('playsinline', '');
     video.muted = true;
     await video.play();
-    // Wait for actual video dimensions
     await new Promise(res => {
       const check = () => video.videoWidth > 0 ? res() : requestAnimationFrame(check);
       check();
     });
     document.getElementById('scanStatus').textContent = 'looking for barcode…';
-    initDecoder();
+    barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+    scanActive = true;
+    tickNative();
   } catch(err) {
     document.getElementById('scanStatus').textContent = 'Camera error: ' + err.message;
   }
-}
-
-async function initDecoder() {
-  scanActive = true;
-  // Android / Chrome: native BarcodeDetector
-  if (typeof BarcodeDetector !== 'undefined') {
-    try {
-      barcodeDetector = new BarcodeDetector({
-        formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39']
-      });
-      tickNative();
-      return;
-    } catch(e) {}
-  }
-  // iOS Safari: use inline EAN decoder — no CDN needed
-  document.getElementById('scanStatus').textContent = 'looking for barcode…';
-  tickZxing();
 }
 
 async function tickNative() {
@@ -832,46 +820,48 @@ async function tickNative() {
   scanRaf = requestAnimationFrame(tickNative);
 }
 
-function tickZxing() {
-  if (!scanActive) return;
-  const now = performance.now();
-  if (now - lastScanTime < 200) {
-    scanRaf = requestAnimationFrame(tickZxing);
-    return;
-  }
-  lastScanTime = now;
+// ── Photo capture mode (iOS 16 and below) ────────────────
+function capturePhoto() {
+  document.getElementById('barcodeFileInput').click();
+}
 
-  const video = document.getElementById('scanVideo');
-  if (!scanStream || video.readyState < 2) {
-    scanRaf = requestAnimationFrame(tickZxing); return;
-  }
-
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
-  if (!vw || !vh) { scanRaf = requestAnimationFrame(tickZxing); return; }
-
-  // Crop centre of frame where the barcode target box is
-  const cropW = Math.floor(vw * 0.85);
-  const cropH = Math.floor(vh * 0.55);
-  const cropX = Math.floor((vw - cropW) / 2);
-  const cropY = Math.floor((vh - cropH) / 2);
-
-  scanCanvas.width = cropW;
-  scanCanvas.height = cropH;
-  scanCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+async function onPhotoSelected(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  input.value = '';
+  document.getElementById('photoCaptureUI').style.display = 'none';
+  document.getElementById('scanStatus').textContent = 'reading barcode…';
 
   try {
-    const imageData = scanCtx.getImageData(0, 0, cropW, cropH);
-    const result = EAN.decode(imageData.data, cropW, cropH);
-    if (result) { onBarcode(result); return; }
-  } catch(e) {}
+    const imageBitmap = await createImageBitmap(file);
+    scanCanvas.width = imageBitmap.width;
+    scanCanvas.height = imageBitmap.height;
+    scanCtx.drawImage(imageBitmap, 0, 0);
 
-  scanRaf = requestAnimationFrame(tickZxing);
+    // Try BarcodeDetector on the image (works on iOS 17+ even if not on live video)
+    if (typeof BarcodeDetector !== 'undefined') {
+      const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+      const results = await detector.detect(scanCanvas);
+      if (results.length > 0) { onBarcode(results[0].rawValue); return; }
+    }
+
+    // Fallback: decode the image data manually using EAN decoder
+    const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+    const result = EAN.decode(imageData.data, scanCanvas.width, scanCanvas.height);
+    if (result) { onBarcode(result); return; }
+
+    document.getElementById('scanStatus').textContent = 'barcode not found — try again, closer and well-lit';
+    document.getElementById('photoCaptureUI').style.display = 'flex';
+  } catch(e) {
+    document.getElementById('scanStatus').textContent = 'error reading photo: ' + e.message;
+    document.getElementById('photoCaptureUI').style.display = 'flex';
+  }
 }
 
 function onBarcode(code) {
   stopCamera();
   document.getElementById('scanViewport').style.display = 'none';
+  document.getElementById('photoCaptureUI').style.display = 'none';
   document.getElementById('scanStatus').textContent = 'found ' + code + ' · looking up…';
   lookupBarcode(code);
 }
@@ -881,20 +871,14 @@ async function lookupBarcode(barcode) {
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,brands,nutriments,serving_quantity`);
     const data = await res.json();
     if (data.status !== 1 || !data.product) {
-      document.getElementById('scanStatus').textContent = 'product not found — tap to scan again';
-      document.getElementById('scanViewport').style.display = 'block';
-      document.getElementById('scanViewport').onclick = () => {
-        document.getElementById('scanViewport').onclick = null;
-        startCamera();
-      };
+      document.getElementById('scanStatus').textContent = 'product not found — try another barcode';
+      if (usePhotoMode) document.getElementById('photoCaptureUI').style.display = 'flex';
+      else { document.getElementById('scanViewport').style.display = 'block'; startCamera(); }
       return;
     }
     const p = data.product;
     const nut = p.nutriments || {};
-    const kcalPer100 = Math.round(
-      nut['energy-kcal_100g'] ||
-      (nut['energy_100g'] ? nut['energy_100g'] / 4.184 : 0) || 0
-    );
+    const kcalPer100 = Math.round(nut['energy-kcal_100g'] || (nut['energy_100g'] ? nut['energy_100g'] / 4.184 : 0) || 0);
     currentProduct = {
       name: p.product_name || p.product_name_en || 'Unknown product',
       brand: p.brands || '',
@@ -965,17 +949,14 @@ function addScannedFood() {
 function rescan() {
   currentProduct = null;
   document.getElementById('productResult').style.display = 'none';
-  document.getElementById('scanViewport').style.display = 'block';
-  document.getElementById('photoCaptureUI').style.display = 'none';
-  document.getElementById('scanStatus').textContent = 'requesting camera…';
-  startCamera();
+  document.getElementById('scanStatus').textContent = '';
+  if (usePhotoMode) {
+    document.getElementById('photoCaptureUI').style.display = 'flex';
+  } else {
+    document.getElementById('scanViewport').style.display = 'block';
+    startCamera();
+  }
 }
-
-// Photo capture fallback (kept but not used in live mode)
-async function capturePhoto() {
-  document.getElementById('barcodeFileInput').click();
-}
-async function onPhotoSelected(input) {}
 
 </script>
 </body>
