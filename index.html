@@ -833,19 +833,33 @@ async function onPhotoSelected(input) {
   document.getElementById('scanStatus').textContent = 'reading barcode…';
 
   try {
-    const imageBitmap = await createImageBitmap(file);
-    scanCanvas.width = imageBitmap.width;
-    scanCanvas.height = imageBitmap.height;
-    scanCtx.drawImage(imageBitmap, 0, 0);
+    // Use FileReader + Image — works on all iOS versions
+    const dataUrl = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = e => res(e.target.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
 
-    // Try BarcodeDetector on the image (works on iOS 17+ even if not on live video)
+    const img = await new Promise((res, rej) => {
+      const image = new Image();
+      image.onload = () => res(image);
+      image.onerror = rej;
+      image.src = dataUrl;
+    });
+
+    scanCanvas.width = img.naturalWidth;
+    scanCanvas.height = img.naturalHeight;
+    scanCtx.drawImage(img, 0, 0);
+
+    // Try BarcodeDetector on canvas (iOS 17+)
     if (typeof BarcodeDetector !== 'undefined') {
       const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
       const results = await detector.detect(scanCanvas);
       if (results.length > 0) { onBarcode(results[0].rawValue); return; }
     }
 
-    // Fallback: decode the image data manually using EAN decoder
+    // Fallback: inline EAN decoder
     const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
     const result = EAN.decode(imageData.data, scanCanvas.width, scanCanvas.height);
     if (result) { onBarcode(result); return; }
@@ -853,7 +867,7 @@ async function onPhotoSelected(input) {
     document.getElementById('scanStatus').textContent = 'barcode not found — try again, closer and well-lit';
     document.getElementById('photoCaptureUI').style.display = 'flex';
   } catch(e) {
-    document.getElementById('scanStatus').textContent = 'error reading photo: ' + e.message;
+    document.getElementById('scanStatus').textContent = 'error: ' + (e && e.message ? e.message : 'unknown error');
     document.getElementById('photoCaptureUI').style.display = 'flex';
   }
 }
