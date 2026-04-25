@@ -278,17 +278,9 @@
     <div class="scan-overlay">
       <div class="scan-frame"></div>
     </div>
-    <div class="scan-hint">point at a food barcode</div>
+    <div class="scan-hint">align barcode with the box</div>
   </div>
-  <!-- iOS fallback: photo capture -->
-  <div id="photoCaptureUI" style="display:none; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:20px; background:#000; padding:32px 24px;">
-    <div style="font-size:48px;">📷</div>
-    <div style="font-family:var(--font-head); font-size:17px; font-weight:700; color:#fff; text-align:center;">Take a photo of the barcode</div>
-    <div style="font-family:var(--font-mono); font-size:12px; color:#888; text-align:center; max-width:260px;">Point your camera at the barcode on the packaging, then tap the button below</div>
-    <button onclick="capturePhoto()" style="background:var(--green); border:none; border-radius:14px; padding:16px 32px; font-family:var(--font-head); font-size:16px; font-weight:700; color:#0f0f0f; cursor:pointer; width:100%; max-width:280px;">Open Camera</button>
-  </div>
-  <input type="file" id="barcodeFileInput" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)" />
-  <div class="scan-status" id="scanStatus">tap scan to start</div>
+  <div class="scan-status" id="scanStatus"></div>
   <div id="productResult" style="display:none; overflow-y:auto; background:#000; padding-bottom:24px;">
     <div class="product-card" id="productCard"></div>
   </div>
@@ -608,7 +600,186 @@ function clearAll() {
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
-// ── Pure JS EAN-13 / EAN-8 / UPC-A decoder (no external library) ──────────
+// ── Barcode Scanner ───────────────────────────────────────
+var scanStream = null;
+var scanRaf = null;
+var currentProduct = null;
+var scanActive = false;
+
+function openScanner() {
+  document.getElementById('scanModalBg').classList.add('open');
+  document.getElementById('productResult').style.display = 'none';
+  document.getElementById('scanViewport').style.display = 'block';
+  document.getElementById('scanStatus').textContent = 'starting camera…';
+  startCamera();
+}
+
+function closeScanner() {
+  stopCamera();
+  document.getElementById('scanModalBg').classList.remove('open');
+  document.getElementById('productResult').style.display = 'none';
+  document.getElementById('scanViewport').style.display = 'block';
+  currentProduct = null;
+}
+
+function stopCamera() {
+  scanActive = false;
+  if (scanRaf) { cancelAnimationFrame(scanRaf); scanRaf = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  const v = document.getElementById('scanVideo');
+  if (v) { v.pause(); v.srcObject = null; }
+}
+
+async function startCamera() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    const video = document.getElementById('scanVideo');
+    video.srcObject = scanStream;
+    video.muted = true;
+    await video.play();
+    // Wait for video to have real dimensions
+    await new Promise(res => {
+      const check = () => video.videoWidth > 0 ? res() : requestAnimationFrame(check);
+      check();
+    });
+
+    if (typeof BarcodeDetector === 'undefined') {
+      document.getElementById('scanStatus').textContent = 'barcode scanning not supported in this browser — try Chrome or update Safari';
+      return;
+    }
+
+    const detector = new BarcodeDetector({
+      formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39']
+    });
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', {willReadFrequently: true});
+    document.getElementById('scanStatus').textContent = 'looking for barcode…';
+    scanActive = true;
+
+    async function tick() {
+      if (!scanActive) return;
+      const video = document.getElementById('scanVideo');
+      if (video && video.readyState >= 2 && video.videoWidth > 0) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        try {
+          const results = await detector.detect(canvas);
+          if (results.length > 0) {
+            onBarcode(results[0].rawValue);
+            return;
+          }
+        } catch(e) {}
+      }
+      setTimeout(() => { if (scanActive) scanRaf = requestAnimationFrame(tick); }, 200);
+    }
+    tick();
+
+  } catch(err) {
+    document.getElementById('scanStatus').textContent = 'Camera error: ' + err.message;
+  }
+}
+
+function onBarcode(code) {
+  stopCamera();
+  document.getElementById('scanViewport').style.display = 'none';
+  document.getElementById('scanStatus').textContent = 'found ' + code + ' · looking up…';
+  lookupBarcode(code);
+}
+
+async function lookupBarcode(barcode) {
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,product_name_en,brands,nutriments,serving_quantity`);
+    const data = await res.json();
+    if (data.status !== 1 || !data.product) {
+      document.getElementById('scanStatus').textContent = 'product not found — try another barcode';
+      document.getElementById('scanViewport').style.display = 'block';
+      startCamera();
+      return;
+    }
+    const p = data.product;
+    const nut = p.nutriments || {};
+    const kcalPer100 = Math.round(nut['energy-kcal_100g'] || (nut['energy_100g'] ? nut['energy_100g'] / 4.184 : 0) || 0);
+    currentProduct = {
+      name: p.product_name || p.product_name_en || 'Unknown product',
+      brand: p.brands || '',
+      kcalPer100,
+      fat: Math.round(nut.fat_100g || 0),
+      carbs: Math.round(nut.carbohydrates_100g || 0),
+      protein: Math.round(nut.proteins_100g || 0),
+      servingG: Math.round(parseFloat(p.serving_quantity) || 100),
+    };
+    showProduct();
+  } catch(e) {
+    document.getElementById('scanStatus').textContent = 'lookup failed — check connection';
+  }
+}
+
+function showProduct() {
+  const p = currentProduct;
+  document.getElementById('scanStatus').textContent = '';
+  document.getElementById('productResult').style.display = 'block';
+  const cal = Math.round(p.kcalPer100 * p.servingG / 100);
+  document.getElementById('productCard').innerHTML = `
+    <div class="product-name">${p.name}</div>
+    <div class="product-brand">${p.brand || 'unknown brand'}</div>
+    <div class="product-macros">
+      <div class="macro-pill highlight">${p.kcalPer100} kcal / 100g</div>
+      <div class="macro-pill">fat ${p.fat}g</div>
+      <div class="macro-pill">carbs ${p.carbs}g</div>
+      <div class="macro-pill">protein ${p.protein}g</div>
+    </div>
+    <div class="serving-row">
+      <input class="serving-input" id="servingInput" type="number" value="${p.servingG}" min="1" max="9999" oninput="updateServing()" />
+      <div class="serving-label">grams</div>
+      <div class="serving-total" id="servingTotal">${cal} kcal</div>
+    </div>
+    <div class="product-actions">
+      <div class="rescan-btn" onclick="rescan()">scan again</div>
+      <div class="add-food-btn" onclick="addScannedFood()">add as snack</div>
+    </div>
+  `;
+}
+
+function updateServing() {
+  if (!currentProduct) return;
+  const g = parseInt(document.getElementById('servingInput').value) || 0;
+  document.getElementById('servingTotal').textContent = Math.round(currentProduct.kcalPer100 * g / 100) + ' kcal';
+}
+
+function addScannedFood() {
+  if (!currentProduct) return;
+  const g = parseInt(document.getElementById('servingInput').value) || 0;
+  const cal = Math.round(currentProduct.kcalPer100 * g / 100);
+  if (cal <= 0) return;
+  const name = currentProduct.name + (g !== 100 ? ` (${g}g)` : '');
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  if (viewDate === todayKey()) {
+    const today = now.toDateString();
+    if (state.lastDay !== today) {
+      state.streak = state.lastDay === new Date(now-86400000).toDateString() ? state.streak+1 : 1;
+      state.lastDay = today;
+    }
+  }
+  state.log.push({type:'spend', name, cal, dateKey: viewDate, time: timeStr});
+  save(); render();
+  closeScanner();
+}
+
+function rescan() {
+  currentProduct = null;
+  document.getElementById('productResult').style.display = 'none';
+  document.getElementById('scanViewport').style.display = 'block';
+  document.getElementById('scanStatus').textContent = 'starting camera…';
+  startCamera();
+}
+</script>
+</body>
+</html>
 // Works entirely offline — no CDN needed
 const EAN = (() => {
   // L-code patterns (odd parity)
