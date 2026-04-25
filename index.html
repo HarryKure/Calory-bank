@@ -647,7 +647,11 @@ async function startCamera() {
     });
 
     if (typeof BarcodeDetector === 'undefined') {
-      document.getElementById('scanStatus').textContent = 'barcode scanning not supported in this browser — try Chrome or update Safari';
+      // Show debug info to help diagnose
+      const ua = navigator.userAgent;
+      const isStandalone = window.navigator.standalone;
+      document.getElementById('scanStatus').textContent = 
+        'BarcodeDetector not found. Standalone: ' + isStandalone + '. Try opening in Safari browser instead of installed app.';
       return;
     }
 
