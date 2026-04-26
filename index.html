@@ -161,12 +161,13 @@
     <div class="hero-divider"></div>
     <div class="chart-controls">
       <div class="tab-group" id="typeTabs">
-        <button class="tab-btn active" onclick="setChartType('bar',this)">daily</button>
-        <button class="tab-btn" onclick="setChartType('line',this)">cumulative</button>
+        <button class="tab-btn" onclick="setChartType('bar',this)">daily</button>
+        <button class="tab-btn active" onclick="setChartType('line',this)">cumulative</button>
       </div>
       <div class="tab-group" id="rangeTabs">
         <button class="tab-btn active" onclick="setRange('week',this)">week</button>
         <button class="tab-btn" onclick="setRange('month',this)">month</button>
+        <button class="tab-btn" onclick="setRange('year',this)">year</button>
       </div>
     </div>
     <canvas id="chartCanvas" height="150"></canvas>
@@ -237,7 +238,7 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" onload="if(typeof render==='function') renderChart()"></script>
 <script>
 const KCAL_PER_KG = 7700;
 const EARN_PRESETS = [{name:'Walk',cal:150},{name:'Run',cal:350},{name:'Gym',cal:400},{name:'Cycling',cal:380},{name:'Swim',cal:300},{name:'Yoga',cal:180}];
@@ -269,7 +270,7 @@ if (state.earned !== undefined) {
 }
 
 let viewDate = todayKey();
-let chartType = 'bar';
+let chartType = 'line';
 let chartRange = 'week';
 let mode = 'earn';
 let chart = null;
@@ -291,7 +292,7 @@ function getDayTotals(k) {
 
 // Chart window: n days ending at viewDate
 function getChartKeys() {
-  const n = chartRange==='week' ? 7 : 30;
+  const n = chartRange==='week' ? 7 : chartRange==='month' ? 30 : 365;
   const keys=[];
   for(let i=n-1;i>=0;i--) keys.push(addDays(viewDate,-i));
   return keys;
@@ -367,9 +368,14 @@ function renderChart() {
   // X labels
   const labels = keys.map((k,i) => {
     if (chartRange==='week') return shortDay(k);
-    // month: label every 7th or 1st
-    const day = parseKey(k).getDate();
-    if (day===1 || day%7===1) return shortDate(k);
+    if (chartRange==='month') {
+      const day = parseKey(k).getDate();
+      if (day===1 || day%7===1) return shortDate(k);
+      return '';
+    }
+    // year: label 1st of each month
+    const d = parseKey(k);
+    if (d.getDate()===1) return d.toLocaleDateString('en-GB',{month:'short'});
     return '';
   });
 
@@ -404,7 +410,7 @@ function renderChart() {
           borderColor: chartType==='line' ? lineColor : barBorder,
           borderWidth: chartType==='line' ? 2 : 1,
           pointBackgroundColor: cumulatives.map((v,i)=> i===viewIdx ? '#ffffff' : (v>=0?'#7dff9b':'#ff7d6b')),
-          pointRadius: chartType==='line' ? keys.map((_,i)=> i===viewIdx ? 5 : 2) : 0,
+          pointRadius: chartType==='line' ? keys.map((_,i)=> chartRange==='year' ? 0 : i===viewIdx ? 5 : 2) : 0,
           fill: chartType==='line',
           tension: 0.3,
           yAxisID: 'y',
@@ -585,8 +591,10 @@ function deleteEntry(idx) {
 }
 
 function clearAll() {
-  if(!confirm('Clear all activity?')) return;
-  state={log:[],streak:0,lastDay:null}; save(); render();
+  const label = viewDate === todayKey() ? "today's" : formatLabel(viewDate) + "'s";
+  if(!confirm(`Clear all ${label} activity?`)) return;
+  state.log = state.log.filter(e => e.dateKey !== viewDate);
+  save(); render();
 }
 
 render();
