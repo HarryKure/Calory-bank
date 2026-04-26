@@ -104,19 +104,17 @@
 
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-bg.open { display: flex; }
-  .modal { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 24px 24px 0 0; padding: 28px 24px calc(28px + env(safe-area-inset-bottom)); width: 100%; max-width: 430px; animation: slideUp 0.28s cubic-bezier(.4,0,.2,1); max-height: 88vh; overflow-y: auto; }
+  .modal { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 24px 24px 0 0; width: 100%; max-width: 430px; animation: slideUp 0.28s cubic-bezier(.4,0,.2,1); max-height: 88vh; display: flex; flex-direction: column; }
   @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
-  .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+  .modal-header { padding: 28px 24px 0; flex-shrink: 0; }
+  .modal-header h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+  .modal-scroll { flex: 1; overflow-y: auto; padding: 0 24px; }
+  .modal-footer { padding: 12px 24px calc(16px + env(safe-area-inset-bottom)); flex-shrink: 0; background: var(--surface); border-top: 0.5px solid var(--border); }
   .modal-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   .quick-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .pill { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 7px 14px; cursor: pointer; transition: background 0.12s; }
+  .pill { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 7px 14px; cursor: pointer; transition: background 0.12s; white-space: nowrap; }
   .pill.selected { border-color: var(--green); color: var(--green); background: var(--green-dim); }
   .pill.selected.spend-mode { border-color: var(--red); color: var(--red); background: var(--red-dim); }
-  .recent-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
-  .recent-item { display: flex; justify-content: space-between; align-items: center; background: var(--surface2); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: pointer; transition: border-color 0.12s; }
-  .recent-item:active { border-color: var(--border2); }
-  .recent-item-name { font-size: 14px; font-weight: 500; }
-  .recent-item-cal { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
   .custom-row { display: flex; gap: 10px; margin-bottom: 20px; }
   .cal-input { flex: 1; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: var(--font-mono); font-size: 18px; outline: none; }
   .cal-input::placeholder { color: var(--muted); }
@@ -213,22 +211,28 @@
 
 <div class="modal-bg" id="modalBg" onclick="closeModalBg(event)">
   <div class="modal">
-    <h2 id="modalTitle">Log workout</h2>
-    <div id="recentSection" style="display:none">
-      <div class="modal-label">Recent</div>
-      <div class="recent-list" id="recentList"></div>
+    <div class="modal-header">
+      <h2 id="modalTitle">Log workout</h2>
     </div>
-    <div class="modal-label">Quick select</div>
-    <div class="quick-pills" id="quickPills"></div>
-    <div class="modal-label">Name (optional)</div>
-    <input class="name-input" id="nameInput" placeholder="e.g. Morning run" />
-    <div class="modal-label">Calories</div>
-    <div class="custom-row">
-      <input class="cal-input" id="calInput" type="number" placeholder="300" min="1" max="9999" />
+    <div class="modal-scroll">
+      <div id="recentSection" style="display:none">
+        <div class="modal-label">Recent</div>
+        <div class="quick-pills" id="recentList"></div>
+      </div>
+      <div class="modal-label">Quick select</div>
+      <div class="quick-pills" id="quickPills"></div>
+      <div class="modal-label">Name (optional)</div>
+      <input class="name-input" id="nameInput" placeholder="e.g. Morning run" />
+      <div class="modal-label">Calories</div>
+      <div class="custom-row">
+        <input class="cal-input" id="calInput" type="number" placeholder="300" min="1" max="9999" />
+      </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModalDirect()">Cancel</button>
-      <button class="btn-confirm earn" id="confirmBtn" onclick="addEntry()">Add</button>
+    <div class="modal-footer">
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModalDirect()">Cancel</button>
+        <button class="btn-confirm earn" id="confirmBtn" onclick="addEntry()">Add</button>
+      </div>
     </div>
   </div>
 </div>
@@ -507,7 +511,7 @@ function openModal(m) {
   document.getElementById('modalTitle').textContent=m==='earn'?'Log workout':'Log snack';
   document.getElementById('confirmBtn').className='btn-confirm '+m;
 
-  // Recent entries
+  // Recent entries as pills
   const recent = getRecent(m);
   const recentSection = document.getElementById('recentSection');
   const recentList = document.getElementById('recentList');
@@ -515,15 +519,16 @@ function openModal(m) {
     recentSection.style.display = 'block';
     recentList.innerHTML = '';
     recent.forEach(r => {
-      const el = document.createElement('div');
-      el.className = 'recent-item';
-      el.innerHTML = `<div class="recent-item-name">${r.name}</div><div class="recent-item-cal">${r.cal} kcal</div>`;
-      el.onclick = () => {
+      const pill = document.createElement('div');
+      pill.className = 'pill';
+      pill.textContent = r.name + ' · ' + r.cal;
+      pill.onclick = () => {
+        document.querySelectorAll('.pill').forEach(x=>x.classList.remove('selected','spend-mode'));
+        pill.classList.add('selected'); if(m==='spend') pill.classList.add('spend-mode');
         document.getElementById('nameInput').value = r.name;
         document.getElementById('calInput').value = r.cal;
-        document.querySelectorAll('.pill').forEach(x=>x.classList.remove('selected','spend-mode'));
       };
-      recentList.appendChild(el);
+      recentList.appendChild(pill);
     });
   } else {
     recentSection.style.display = 'none';
