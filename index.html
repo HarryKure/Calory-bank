@@ -30,13 +30,12 @@
   /* Header */
   header { padding: 52px 20px 0; display: flex; align-items: flex-end; justify-content: space-between; }
   header h1 { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  .streak-pill { font-family: var(--font-mono); font-size: 11px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 5px 10px; color: var(--amber); }
-
   /* Date nav */
   .date-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 0; }
   .date-arrow { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 10px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text); transition: background 0.15s; user-select: none; flex-shrink: 0; }
   .date-arrow:active { background: var(--surface2); }
   .date-arrow.disabled { opacity: 0.2; pointer-events: none; }
+  .date-arrow.small { width: 28px; height: 28px; font-size: 13px; color: var(--muted); }
   .date-center { text-align: center; flex: 1; }
   .date-label { font-family: var(--font-mono); font-size: 15px; color: var(--text); }
   .date-sublabel { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); min-height: 16px; }
@@ -102,6 +101,19 @@
   .delete-btn:hover { color: var(--red); opacity: 1; }
   .empty-state { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono); }
 
+  /* History scoreboard */
+  .history-section { padding: 20px 20px 32px; }
+  .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .history-title { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .history-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 14px 10px; margin-bottom: 10px; }
+  .history-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .history-stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .history-stat-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .history-stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+  .history-stat-val.pos { color: var(--green); }
+  .history-stat-val.neg { color: var(--red); }
+  .history-stat-sub { font-size: 9px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-bg.open { display: flex; }
   .modal { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 24px 24px 0 0; width: 100%; max-width: 430px; animation: slideUp 0.28s cubic-bezier(.4,0,.2,1); max-height: 88vh; display: flex; flex-direction: column; }
@@ -131,7 +143,6 @@
 
 <header>
   <h1>Cal Bank</h1>
-  <div class="streak-pill" id="streakPill">🔥 0 day streak</div>
 </header>
 
 <div class="date-nav">
@@ -150,7 +161,7 @@
       <div class="balance-col">
         <div class="balance-label" id="balanceLabel">Balance</div>
         <div class="balance-amount" id="balanceAmt">0</div>
-        <div class="balance-unit">kcal cumulative</div>
+        <div class="balance-unit" id="balanceUnit">kcal cumulative</div>
       </div>
       <div class="kg-col">
         <div class="kg-label">Est. change</div>
@@ -208,6 +219,21 @@
   <div class="log-list" id="logList">
     <div class="empty-state" id="emptyState">no activity yet</div>
   </div>
+</div>
+
+<!-- Weekly history scoreboard -->
+<div class="history-section">
+  <div class="history-header">
+    <h3 class="history-title">Weekly scores</h3>
+    <div class="tab-group">
+      <button class="tab-btn active" id="histMonthBtn" onclick="setHistoryRange('month',this)">month</button>
+      <button class="tab-btn" id="histYearBtn" onclick="setHistoryRange('year',this)">year</button>
+    </div>
+  </div>
+  <div class="history-card">
+    <canvas id="historyCanvas" height="140"></canvas>
+  </div>
+  <div class="history-stats" id="historyStats"></div>
 </div>
 
 <div class="modal-bg" id="modalBg" onclick="closeModalBg(event)">
@@ -284,15 +310,35 @@ function getDayNet(k) {
 function getCumulative(upToKey) {
   return state.log.filter(e=>e.dateKey<=upToKey).reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
 }
+function getWeekMonday(k) {
+  const d = parseKey(k);
+  const dow = d.getDay(); // 0=Sun
+  const offset = dow===0 ? -6 : 1-dow;
+  return addDays(k, offset);
+}
+function getWeekBalance(k) {
+  // Sum all entries from Monday of k's week up to k
+  const monday = getWeekMonday(k);
+  return state.log
+    .filter(e=>e.dateKey>=monday && e.dateKey<=k)
+    .reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
+}
 function getDayTotals(k) {
   let earned=0,spent=0;
   state.log.filter(e=>e.dateKey===k).forEach(e=>{ if(e.type==='earn') earned+=e.cal; else spent+=e.cal; });
   return {earned,spent};
 }
 
-// Chart window: n days ending at viewDate
+// Chart window
 function getChartKeys() {
-  const n = chartRange==='week' ? 7 : chartRange==='month' ? 30 : 365;
+  if (chartRange==='week') {
+    // Always show Mon–Sun of the week containing viewDate
+    const monday = getWeekMonday(viewDate);
+    const keys=[];
+    for(let i=0;i<7;i++) keys.push(addDays(monday,i));
+    return keys;
+  }
+  const n = chartRange==='month' ? 30 : 365;
   const keys=[];
   for(let i=n-1;i>=0;i--) keys.push(addDays(viewDate,-i));
   return keys;
@@ -308,14 +354,17 @@ function render() {
   document.getElementById('todayBtn').style.display = isToday ? 'none' : 'block';
   document.getElementById('dateNext').classList.toggle('disabled', isToday);
 
-  // Balance = cumulative up to viewDate
-  const bal = getCumulative(viewDate);
+  // Balance = weekly (Mon–Sun of viewed date's week), resets each Monday
+  const bal = getWeekBalance(viewDate);
+  const monday = getWeekMonday(viewDate);
   const balEl = document.getElementById('balanceAmt');
   balEl.textContent = (bal>=0?'+':'')+bal;
   balEl.className = 'balance-amount'+(bal<0?' negative':'');
-  document.getElementById('balanceLabel').textContent = isToday ? 'Balance' : 'Balance at date';
+  const isThisWeek = monday === getWeekMonday(todayKey());
+  document.getElementById('balanceLabel').textContent = isThisWeek ? 'This week' : 'Week balance';
+  document.getElementById('balanceUnit').textContent = 'kcal · resets every monday';
 
-  // kg
+  // kg — based on weekly balance
   const kgEl = document.getElementById('kgVal');
   kgEl.textContent = (bal>=0?'-':'+')+Math.abs(bal/KCAL_PER_KG).toFixed(2)+' kg';
   kgEl.className = 'kg-val '+(bal>=0?'loss':'gain');
@@ -329,10 +378,7 @@ function render() {
   document.getElementById('earnedSub').textContent = dayLbl;
   document.getElementById('spentSub').textContent = dayLbl;
 
-  // Streak
-  document.getElementById('streakPill').textContent = '🔥 '+state.streak+' day streak';
-
-  // Log
+  // Log: show entries for viewed date
   const entries = state.log.filter(e=>e.dateKey===viewDate);
   const list = document.getElementById('logList');
   document.getElementById('logTitle').textContent = isToday ? "Today's activity" : formatLabel(viewDate);
@@ -341,7 +387,6 @@ function render() {
     list.appendChild(document.getElementById('emptyState'));
   } else {
     list.innerHTML='';
-    // Build reversed list but track global indices for deletion
     const indexed = state.log.map((e,i)=>({e,i})).filter(({e})=>e.dateKey===viewDate);
     indexed.slice().reverse().forEach(({e: entry, i: globalIdx})=>{
       const div=document.createElement('div');
@@ -354,6 +399,7 @@ function render() {
   }
 
   renderChart();
+  renderHistory();
 }
 
 function renderChart() {
@@ -361,8 +407,22 @@ function renderChart() {
 
   const keys = getChartKeys();
   const dailyNets = keys.map(k=>getDayNet(k));
-  const cumulatives = keys.map(k=>getCumulative(k));
-  const useData = chartType==='line' ? cumulatives : dailyNets;
+
+  // Cumulative resets each Monday — matches the balance card logic
+  let windowCumulatives = [];
+  let running = 0;
+  let lastMonday = null;
+  keys.forEach((k, i) => {
+    const mon = getWeekMonday(k);
+    if (mon !== lastMonday) { running = 0; lastMonday = mon; }
+    running += dailyNets[i];
+    windowCumulatives.push(running);
+  });
+
+  // All-time cumulative for kg overlay
+  const allTimeCumulatives = keys.map(k=>getCumulative(k));
+
+  const useData = chartType==='line' ? windowCumulatives : dailyNets;
   const viewIdx = keys.indexOf(viewDate);
 
   // X labels
@@ -373,7 +433,6 @@ function renderChart() {
       if (day===1 || day%7===1) return shortDate(k);
       return '';
     }
-    // year: label 1st of each month
     const d = parseKey(k);
     if (d.getDate()===1) return d.toLocaleDateString('en-GB',{month:'short'});
     return '';
@@ -384,18 +443,17 @@ function renderChart() {
       ? (v>=0 ? '#7dff9b' : '#ff7d6b')
       : (v>=0 ? 'rgba(125,255,155,0.4)' : 'rgba(255,125,107,0.4)')
   );
-  const barBorder = useData.map((v,i) =>
+  const barBorder = useData.map((v) =>
     v>=0 ? 'rgba(125,255,155,0.8)' : 'rgba(255,125,107,0.8)'
   );
 
-  const kgOverlay = cumulatives.map(v=>+(v/KCAL_PER_KG).toFixed(3));
+  const kgOverlay = allTimeCumulatives.map(v=>+(v/KCAL_PER_KG).toFixed(3));
 
   const ctx = document.getElementById('chartCanvas').getContext('2d');
   if (chart) { chart.destroy(); chart=null; }
 
-  // Annotation line at y=0
   const lineColor = chartType==='line'
-    ? (cumulatives[cumulatives.length-1]>=0 ? '#7dff9b' : '#ff7d6b')
+    ? (windowCumulatives[windowCumulatives.length-1]>=0 ? '#7dff9b' : '#ff7d6b')
     : 'transparent';
 
   chart = new Chart(ctx, {
@@ -409,7 +467,7 @@ function renderChart() {
           backgroundColor: chartType==='line' ? 'rgba(125,255,155,0.07)' : barBg,
           borderColor: chartType==='line' ? lineColor : barBorder,
           borderWidth: chartType==='line' ? 2 : 1,
-          pointBackgroundColor: cumulatives.map((v,i)=> i===viewIdx ? '#ffffff' : (v>=0?'#7dff9b':'#ff7d6b')),
+          pointBackgroundColor: windowCumulatives.map((v,i)=> i===viewIdx ? '#ffffff' : (v>=0?'#7dff9b':'#ff7d6b')),
           pointRadius: chartType==='line' ? keys.map((_,i)=> chartRange==='year' ? 0 : i===viewIdx ? 5 : 2) : 0,
           fill: chartType==='line',
           tension: 0.3,
@@ -595,6 +653,127 @@ function clearAll() {
   if(!confirm(`Clear all ${label} activity?`)) return;
   state.log = state.log.filter(e => e.dateKey !== viewDate);
   save(); render();
+}
+
+// ── History / Weekly Scores ───────────────────────────────
+let historyRange = 'month';
+let historyChart = null;
+
+function setHistoryRange(r, btn) {
+  historyRange = r;
+  document.querySelectorAll('#histMonthBtn,#histYearBtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistory();
+}
+
+function getWeekScore(monday) {
+  const sunday = addDays(monday, 6);
+  return state.log
+    .filter(e=>e.dateKey>=monday && e.dateKey<=sunday)
+    .reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
+}
+
+function getWeeks() {
+  const today = todayKey();
+  const currentMonday = getWeekMonday(today);
+  const weeksBack = historyRange==='month' ? 8 : 52;
+  const weeks = [];
+  for (let i=weeksBack-1; i>=0; i--) {
+    const monday = addDays(currentMonday, -i*7);
+    const sunday = addDays(monday, 6);
+    const score = getWeekScore(monday);
+    weeks.push({ monday, sunday, score });
+  }
+  return weeks;
+}
+
+function renderHistory() {
+  if (typeof Chart === 'undefined') return;
+  const weeks = getWeeks();
+  const today = todayKey();
+  const currentMonday = getWeekMonday(today);
+
+  const labels = weeks.map(w => {
+    const d = parseKey(w.monday);
+    if (historyRange==='month') return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    return d.getDate()<=7 ? d.toLocaleDateString('en-GB',{month:'short'}) : '';
+  });
+
+  const scores = weeks.map(w=>w.score);
+  const barBg = scores.map((s,i) =>
+    weeks[i].monday===currentMonday
+      ? (s>=0 ? '#7dff9b' : '#ff7d6b')
+      : (s>=0 ? 'rgba(125,255,155,0.45)' : 'rgba(255,125,107,0.45)')
+  );
+  const borderColors = scores.map(s => s>=0 ? 'rgba(125,255,155,0.8)' : 'rgba(255,125,107,0.8)');
+
+  const ctx = document.getElementById('historyCanvas').getContext('2d');
+  if (historyChart) { historyChart.destroy(); historyChart=null; }
+
+  historyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label:'weekly score', data:scores, backgroundColor:barBg, borderColor:borderColors, borderWidth:1, borderRadius:3 }]
+    },
+    options: {
+      responsive: true,
+      onClick: (evt, els) => {
+        if (!els.length) return;
+        const w = weeks[els[0].index];
+        viewDate = w.monday > today ? today : w.monday;
+        render();
+        window.scrollTo({top:0, behavior:'smooth'});
+      },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor:'#1a1a1a', borderColor:'rgba(255,255,255,0.14)', borderWidth:1,
+          titleColor:'#888', bodyColor:'#f0ede8',
+          titleFont:{family:'DM Mono',size:10}, bodyFont:{family:'DM Mono',size:11},
+          callbacks: {
+            title: items => {
+              const w=weeks[items[0].dataIndex];
+              return parseKey(w.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+parseKey(w.sunday).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+            },
+            label: item => {
+              const v=item.raw, kg=Math.abs(v/KCAL_PER_KG).toFixed(2);
+              return ' '+(v>=0?'+':'')+v+' kcal  ('+(v>=0?'-':'+')+kg+' kg)';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks:{color:'#555',font:{family:'DM Mono',size:9},maxRotation:0}, grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'} },
+        y: { ticks:{color:'#555',font:{family:'DM Mono',size:9},callback:v=>(v>=0?'+':'')+v}, grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'} }
+      }
+    }
+  });
+
+  // Stats
+  const nonEmpty = weeks.filter(w=>w.score!==0);
+  const best = nonEmpty.length ? nonEmpty.reduce((a,b)=>a.score>b.score?a:b) : null;
+  const worst = nonEmpty.length ? nonEmpty.reduce((a,b)=>a.score<b.score?a:b) : null;
+  let streak=0;
+  for (let i=weeks.length-1;i>=0;i--) { if(weeks[i].score>0) streak++; else break; }
+
+  document.getElementById('historyStats').innerHTML = `
+    <div class="history-stat">
+      <div class="history-stat-label">Best week</div>
+      <div class="history-stat-val pos">${best?'+'+best.score:'—'}</div>
+      <div class="history-stat-sub">${best?parseKey(best.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>
+    </div>
+    <div class="history-stat">
+      <div class="history-stat-label">Worst week</div>
+      <div class="history-stat-val neg">${worst&&worst.score<0?worst.score:'—'}</div>
+      <div class="history-stat-sub">${worst&&worst.score<0?parseKey(worst.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'none yet'}</div>
+    </div>
+    <div class="history-stat">
+      <div class="history-stat-label">Win streak</div>
+      <div class="history-stat-val ${streak>0?'pos':''}">${streak}</div>
+      <div class="history-stat-sub">week${streak===1?'':'s'} positive</div>
+    </div>
+  `;
 }
 
 render();
