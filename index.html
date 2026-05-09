@@ -172,13 +172,13 @@
     <div class="hero-divider"></div>
     <div class="chart-controls">
       <div class="tab-group" id="typeTabs">
-        <button class="tab-btn" onclick="setChartType('bar',this)">daily</button>
-        <button class="tab-btn active" onclick="setChartType('line',this)">cumulative</button>
+        <button class="tab-btn active" onclick="setChartType('bar',this)">daily</button>
+        <button class="tab-btn" onclick="setChartType('line',this)">weekly</button>
       </div>
       <div class="tab-group" id="rangeTabs">
-        <button class="tab-btn active" onclick="setRange('week',this)">week</button>
-        <button class="tab-btn" onclick="setRange('month',this)">month</button>
-        <button class="tab-btn" onclick="setRange('year',this)">year</button>
+        <button class="tab-btn active" onclick="setRange('week',this)">8w</button>
+        <button class="tab-btn" onclick="setRange('month',this)">13w</button>
+        <button class="tab-btn" onclick="setRange('year',this)">52w</button>
       </div>
     </div>
     <canvas id="chartCanvas" height="150"></canvas>
@@ -296,7 +296,7 @@ if (state.earned !== undefined) {
 }
 
 let viewDate = todayKey();
-let chartType = 'line';
+let chartType = 'bar';
 let chartRange = 'week';
 let mode = 'earn';
 let chart = null;
@@ -331,17 +331,150 @@ function getDayTotals(k) {
 
 // Chart window
 function getChartKeys() {
-  if (chartRange==='week') {
-    // Always show Mon–Sun of the week containing viewDate
+  // daily: 7 days of viewDate's week (Mon–Sun)
+  if (chartType==='bar') {
     const monday = getWeekMonday(viewDate);
     const keys=[];
     for(let i=0;i<7;i++) keys.push(addDays(monday,i));
     return keys;
   }
-  const n = chartRange==='month' ? 30 : 365;
+  // cumulative (weekly scores): last N weeks ending at viewDate's week
+  const n = chartRange==='week' ? 8 : chartRange==='month' ? 13 : 52;
+  const currentMonday = getWeekMonday(viewDate);
   const keys=[];
-  for(let i=n-1;i>=0;i--) keys.push(addDays(viewDate,-i));
+  for(let i=n-1;i>=0;i--) keys.push(addDays(currentMonday,-i*7));
   return keys;
+}
+
+function renderChart() {
+  if (typeof Chart === 'undefined') return;
+
+  const today = todayKey();
+  const ctx = document.getElementById('chartCanvas').getContext('2d');
+  if (chart) { chart.destroy(); chart=null; }
+
+  if (chartType==='bar') {
+    // ── Daily view: each day of viewDate's week ──
+    const keys = getChartKeys();
+    const nets = keys.map(k=>getDayNet(k));
+    const viewMonday = getWeekMonday(viewDate);
+    const labels = keys.map(k=>shortDay(k));
+    const isViewDay = keys.map(k=>k===viewDate);
+    const isFuture = keys.map(k=>k>today);
+
+    const barBg = nets.map((v,i) =>
+      isFuture[i] ? 'rgba(255,255,255,0.05)'
+      : isViewDay[i] ? (v>=0?'#7dff9b':'#ff7d6b')
+      : v>=0 ? 'rgba(125,255,155,0.4)' : 'rgba(255,125,107,0.4)'
+    );
+
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{
+        data: nets,
+        backgroundColor: barBg,
+        borderColor: nets.map((v,i)=>isFuture[i]?'transparent':v>=0?'rgba(125,255,155,0.8)':'rgba(255,125,107,0.8)'),
+        borderWidth: 1, borderRadius: 3
+      }]},
+      options: {
+        responsive: true,
+        onClick: (evt, els) => { if(els.length){viewDate=keys[els[0].index];render();} },
+        plugins: {
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#1a1a1a',borderColor:'rgba(255,255,255,0.14)',borderWidth:1,
+            titleColor:'#888',bodyColor:'#f0ede8',
+            titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:11},
+            callbacks:{
+              title:items=>formatLabel(keys[items[0].dataIndex]),
+              label:item=>' '+(item.raw>=0?'+':'')+item.raw+' kcal'
+            }
+          }
+        },
+        scales:{
+          x:{ticks:{color:'#555',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
+          y:{ticks:{color:'#555',font:{family:'DM Mono',size:10},callback:v=>(v>=0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}}
+        }
+      }
+    });
+
+  } else {
+    // ── Cumulative weekly scores view ──
+    const mondays = getChartKeys();
+    const currentMonday = getWeekMonday(viewDate);
+    const scores = mondays.map(m=>getWeekScore(m));
+
+    // Running cumulative of weekly scores (resets at start of shown window)
+    let running=0;
+    const cumScores = scores.map(s=>{ running+=s; return running; });
+
+    const labels = mondays.map(m=>{
+      const d=parseKey(m);
+      if(chartRange==='week') return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      if(chartRange==='month') return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      return d.getDate()<=7 ? d.toLocaleDateString('en-GB',{month:'short'}) : '';
+    });
+
+    const isCurrentWeek = mondays.map(m=>m===currentMonday);
+    const lineColor = cumScores[cumScores.length-1]>=0 ? '#7dff9b' : '#ff7d6b';
+
+    const kgOverlay = cumScores.map(v=>+(v/KCAL_PER_KG).toFixed(3));
+
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [
+        {
+          label:'kcal',
+          data: cumScores,
+          borderColor: lineColor,
+          backgroundColor: lineColor==='#7dff9b'?'rgba(125,255,155,0.07)':'rgba(255,125,107,0.07)',
+          borderWidth: 2,
+          pointBackgroundColor: cumScores.map((v,i)=>isCurrentWeek[i]?'#fff':(v>=0?'#7dff9b':'#ff7d6b')),
+          pointRadius: mondays.map((_,i)=>isCurrentWeek[i]?5:2),
+          fill: true, tension: 0.3, yAxisID:'y'
+        },
+        {
+          label:'kg',
+          data: kgOverlay,
+          type:'line',
+          borderColor:'rgba(255,201,107,0.5)',
+          borderWidth:1.5, borderDash:[4,3],
+          pointRadius:0, fill:false, tension:0.3, yAxisID:'y2'
+        }
+      ]},
+      options: {
+        responsive: true,
+        interaction:{mode:'index',intersect:false},
+        onClick: (evt, els) => {
+          if(els.length){ viewDate=mondays[els[0].index]; render(); }
+        },
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#1a1a1a',borderColor:'rgba(255,255,255,0.14)',borderWidth:1,
+            titleColor:'#888',bodyColor:'#f0ede8',
+            titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:11},
+            callbacks:{
+              title:items=>{
+                const m=mondays[items[0].dataIndex];
+                return 'w/c '+parseKey(m).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+              },
+              label:item=>{
+                if(item.datasetIndex===0) return ' '+(item.raw>=0?'+':'')+item.raw+' kcal';
+                const n=parseFloat(item.raw);
+                return ' '+(n>=0?'-':'+')+Math.abs(n).toFixed(2)+' kg';
+              }
+            }
+          }
+        },
+        scales:{
+          x:{ticks:{color:'#555',font:{family:'DM Mono',size:9},maxRotation:0},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
+          y:{position:'left',ticks:{color:'#555',font:{family:'DM Mono',size:9},callback:v=>(v>=0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
+          y2:{position:'right',ticks:{color:'rgba(255,201,107,0.45)',font:{family:'DM Mono',size:9},callback:v=>{const n=parseFloat(v);return(n>=0?'-':'+')+Math.abs(n).toFixed(1)+'kg';}},grid:{drawOnChartArea:false},border:{color:'rgba(255,255,255,0.08)'}}
+        }
+      }
+    });
+  }
 }
 
 // ── Render ───────────────────────────────────────────────
@@ -400,140 +533,8 @@ function render() {
 
   renderChart();
   renderHistory();
-}
-
-function renderChart() {
-  if (typeof Chart === 'undefined') return;
-
-  const keys = getChartKeys();
-  const dailyNets = keys.map(k=>getDayNet(k));
-
-  // Cumulative resets each Monday — matches the balance card logic
-  let windowCumulatives = [];
-  let running = 0;
-  let lastMonday = null;
-  keys.forEach((k, i) => {
-    const mon = getWeekMonday(k);
-    if (mon !== lastMonday) { running = 0; lastMonday = mon; }
-    running += dailyNets[i];
-    windowCumulatives.push(running);
-  });
-
-  // All-time cumulative for kg overlay
-  const allTimeCumulatives = keys.map(k=>getCumulative(k));
-
-  const useData = chartType==='line' ? windowCumulatives : dailyNets;
-  const viewIdx = keys.indexOf(viewDate);
-
-  // X labels
-  const labels = keys.map((k,i) => {
-    if (chartRange==='week') return shortDay(k);
-    if (chartRange==='month') {
-      const day = parseKey(k).getDate();
-      if (day===1 || day%7===1) return shortDate(k);
-      return '';
-    }
-    const d = parseKey(k);
-    if (d.getDate()===1) return d.toLocaleDateString('en-GB',{month:'short'});
-    return '';
-  });
-
-  const barBg = useData.map((v,i) =>
-    i===viewIdx
-      ? (v>=0 ? '#7dff9b' : '#ff7d6b')
-      : (v>=0 ? 'rgba(125,255,155,0.4)' : 'rgba(255,125,107,0.4)')
-  );
-  const barBorder = useData.map((v) =>
-    v>=0 ? 'rgba(125,255,155,0.8)' : 'rgba(255,125,107,0.8)'
-  );
-
-  const kgOverlay = allTimeCumulatives.map(v=>+(v/KCAL_PER_KG).toFixed(3));
-
-  const ctx = document.getElementById('chartCanvas').getContext('2d');
-  if (chart) { chart.destroy(); chart=null; }
-
-  const lineColor = chartType==='line'
-    ? (windowCumulatives[windowCumulatives.length-1]>=0 ? '#7dff9b' : '#ff7d6b')
-    : 'transparent';
-
-  chart = new Chart(ctx, {
-    type: chartType,
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'kcal',
-          data: useData,
-          backgroundColor: chartType==='line' ? 'rgba(125,255,155,0.07)' : barBg,
-          borderColor: chartType==='line' ? lineColor : barBorder,
-          borderWidth: chartType==='line' ? 2 : 1,
-          pointBackgroundColor: windowCumulatives.map((v,i)=> i===viewIdx ? '#ffffff' : (v>=0?'#7dff9b':'#ff7d6b')),
-          pointRadius: chartType==='line' ? keys.map((_,i)=> chartRange==='year' ? 0 : i===viewIdx ? 5 : 2) : 0,
-          fill: chartType==='line',
-          tension: 0.3,
-          yAxisID: 'y',
-        },
-        {
-          label: 'kg',
-          data: kgOverlay,
-          type: 'line',
-          borderColor: 'rgba(255,201,107,0.5)',
-          borderWidth: 1.5,
-          borderDash: [4,3],
-          pointRadius: 0,
-          fill: false,
-          tension: 0.3,
-          yAxisID: 'y2',
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      interaction: { mode:'index', intersect:false },
-      onClick: (evt, els) => {
-        if (els.length) { viewDate=keys[els[0].index]; render(); }
-      },
-      plugins: {
-        legend: { display:false },
-        tooltip: {
-          backgroundColor: '#1a1a1a',
-          borderColor: 'rgba(255,255,255,0.14)', borderWidth:1,
-          titleColor:'#888', bodyColor:'#f0ede8',
-          titleFont:{family:'DM Mono',size:10}, bodyFont:{family:'DM Mono',size:11},
-          callbacks: {
-            title: items => formatLabel(keys[items[0].dataIndex]),
-            label: item => {
-              if (item.datasetIndex===0) return ' '+(item.raw>=0?'+':'')+item.raw+' kcal';
-              const n=parseFloat(item.raw);
-              return ' '+(n>=0?'-':'+')+Math.abs(n).toFixed(3)+' kg';
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color:'#555', font:{family:'DM Mono',size:10}, maxRotation:0 },
-          grid: { color:'rgba(255,255,255,0.04)' },
-          border: { color:'rgba(255,255,255,0.08)' }
-        },
-        y: {
-          position:'left',
-          ticks: { color:'#555', font:{family:'DM Mono',size:10}, callback: v=>(v>=0?'+':'')+v },
-          grid: { color:'rgba(255,255,255,0.04)' },
-          border: { color:'rgba(255,255,255,0.08)' }
-        },
-        y2: {
-          position:'right',
-          ticks: {
-            color:'rgba(255,201,107,0.45)', font:{family:'DM Mono',size:10},
-            callback: v=>{ const n=parseFloat(v); return (n>=0?'-':'+')+Math.abs(n).toFixed(2)+'kg'; }
-          },
-          grid: { drawOnChartArea:false },
-          border: { color:'rgba(255,255,255,0.08)' }
-        }
-      }
-    }
-  });
+  // Range tabs only visible in weekly mode
+  document.getElementById('rangeTabs').style.visibility = chartType==='line' ? 'visible' : 'hidden';
 }
 
 // ── Controls ─────────────────────────────────────────────
@@ -546,7 +547,10 @@ function goToday() { viewDate=todayKey(); render(); }
 function setChartType(t,btn) {
   chartType=t;
   document.querySelectorAll('#typeTabs .tab-btn').forEach(x=>x.classList.remove('active'));
-  btn.classList.add('active'); renderChart();
+  btn.classList.add('active');
+  // Range tabs only make sense in weekly mode
+  document.getElementById('rangeTabs').style.visibility = t==='line' ? 'visible' : 'hidden';
+  renderChart();
 }
 function setRange(r,btn) {
   chartRange=r;
