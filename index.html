@@ -101,18 +101,43 @@
   .delete-btn:hover { color: var(--red); opacity: 1; }
   .empty-state { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono); }
 
+  /* Dual chart labels */
+  .dual-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .dual-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  canvas#weekCanvas, canvas#chartCanvas { width: 100% !important; display: block; }
+
   /* History scoreboard */
   .history-section { padding: 20px 20px 32px; }
   .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .history-title { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-  .history-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 14px 10px; margin-bottom: 10px; }
-  .history-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .history-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .history-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
   .history-stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   .history-stat-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
   .history-stat-val { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
   .history-stat-val.pos { color: var(--green); }
   .history-stat-val.neg { color: var(--red); }
   .history-stat-sub { font-size: 9px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+
+  /* Week game cards */
+  .week-cards { display: flex; flex-direction: column; gap: 8px; }
+  .week-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .week-card:active { border-color: var(--border2); }
+  .week-card.current-week { border-color: var(--amber); }
+  .week-card.win { border-left: 3px solid var(--green); }
+  .week-card.loss { border-left: 3px solid var(--red); }
+  .week-card.empty { border-left: 3px solid var(--border2); opacity: 0.5; }
+  .wc-badge { font-size: 18px; flex-shrink: 0; width: 32px; text-align: center; }
+  .wc-info { flex: 1; min-width: 0; }
+  .wc-dates { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 3px; }
+  .wc-bar-wrap { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+  .wc-bar { height: 4px; border-radius: 2px; transition: width 0.4s; }
+  .wc-bar.pos { background: var(--green); }
+  .wc-bar.neg { background: var(--red); }
+  .wc-score { font-family: var(--font-mono); font-size: 15px; font-weight: 500; flex-shrink: 0; text-align: right; }
+  .wc-score.pos { color: var(--green); }
+  .wc-score.neg { color: var(--red); }
+  .wc-score.zero { color: var(--muted); }
+  .wc-kg { font-size: 10px; color: var(--muted); font-family: var(--font-mono); text-align: right; margin-top: 2px; }
 
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-bg.open { display: flex; }
@@ -159,9 +184,9 @@
   <div class="hero-card">
     <div class="hero-top">
       <div class="balance-col">
-        <div class="balance-label" id="balanceLabel">Balance</div>
+        <div class="balance-label" id="balanceLabel">This week</div>
         <div class="balance-amount" id="balanceAmt">0</div>
-        <div class="balance-unit" id="balanceUnit">kcal cumulative</div>
+        <div class="balance-unit" id="balanceUnit">kcal · resets monday</div>
       </div>
       <div class="kg-col">
         <div class="kg-label">Est. change</div>
@@ -170,18 +195,20 @@
       </div>
     </div>
     <div class="hero-divider"></div>
-    <div class="chart-controls">
-      <div class="tab-group" id="typeTabs">
-        <button class="tab-btn active" onclick="setChartType('bar',this)">daily</button>
-        <button class="tab-btn" onclick="setChartType('line',this)">weekly</button>
-      </div>
+    <!-- Top: current week daily bars -->
+    <div class="dual-label">this week · day by day</div>
+    <canvas id="weekCanvas" height="90"></canvas>
+    <div class="hero-divider" style="margin:12px 0 10px"></div>
+    <!-- Bottom: recent weeks -->
+    <div class="dual-header">
+      <div class="dual-label">recent weeks</div>
       <div class="tab-group" id="rangeTabs">
         <button class="tab-btn active" onclick="setRange('week',this)">8w</button>
         <button class="tab-btn" onclick="setRange('month',this)">13w</button>
         <button class="tab-btn" onclick="setRange('year',this)">52w</button>
       </div>
     </div>
-    <canvas id="chartCanvas" height="150"></canvas>
+    <canvas id="chartCanvas" height="90"></canvas>
   </div>
 </div>
 
@@ -224,16 +251,14 @@
 <!-- Weekly history scoreboard -->
 <div class="history-section">
   <div class="history-header">
-    <h3 class="history-title">Weekly scores</h3>
+    <h3 class="history-title">🏆 Weekly scores</h3>
     <div class="tab-group">
-      <button class="tab-btn active" id="histMonthBtn" onclick="setHistoryRange('month',this)">month</button>
-      <button class="tab-btn" id="histYearBtn" onclick="setHistoryRange('year',this)">year</button>
+      <button class="tab-btn active" id="histMonthBtn" onclick="setHistoryRange('month',this)">8w</button>
+      <button class="tab-btn" id="histYearBtn" onclick="setHistoryRange('year',this)">52w</button>
     </div>
   </div>
-  <div class="history-card">
-    <canvas id="historyCanvas" height="140"></canvas>
-  </div>
   <div class="history-stats" id="historyStats"></div>
+  <div class="week-cards" id="weekCards"></div>
 </div>
 
 <div class="modal-bg" id="modalBg" onclick="closeModalBg(event)">
@@ -317,10 +342,15 @@ function getWeekMonday(k) {
   return addDays(k, offset);
 }
 function getWeekBalance(k) {
-  // Sum all entries from Monday of k's week up to k
   const monday = getWeekMonday(k);
   return state.log
     .filter(e=>e.dateKey>=monday && e.dateKey<=k)
+    .reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
+}
+function getWeekScore(monday) {
+  const sunday = addDays(monday,6);
+  return state.log
+    .filter(e=>e.dateKey>=monday && e.dateKey<=sunday)
     .reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
 }
 function getDayTotals(k) {
@@ -329,181 +359,130 @@ function getDayTotals(k) {
   return {earned,spent};
 }
 
-// Chart window
-function getChartKeys() {
-  // daily: 7 days of viewDate's week (Mon–Sun)
-  if (chartType==='bar') {
-    const monday = getWeekMonday(viewDate);
-    const keys=[];
-    for(let i=0;i<7;i++) keys.push(addDays(monday,i));
-    return keys;
-  }
-  // cumulative (weekly scores): last N weeks ending at viewDate's week
-  const n = chartRange==='week' ? 8 : chartRange==='month' ? 13 : 52;
-  const currentMonday = getWeekMonday(viewDate);
-  const keys=[];
-  for(let i=n-1;i>=0;i--) keys.push(addDays(currentMonday,-i*7));
-  return keys;
+// Chart window — only used for weekly scores chart now
+function getWeekMondays(n) {
+  const currentMonday = getWeekMonday(todayKey());
+  const mondays=[];
+  for(let i=n-1;i>=0;i--) mondays.push(addDays(currentMonday,-i*7));
+  return mondays;
 }
+
+let weekChart = null;
 
 function renderChart() {
   if (typeof Chart === 'undefined') return;
-
   const today = todayKey();
+  const viewMonday = getWeekMonday(viewDate);
+
+  // ── Top: current week's day-by-day bars ──
+  const weekCtx = document.getElementById('weekCanvas').getContext('2d');
+  if (weekChart) { weekChart.destroy(); weekChart=null; }
+  const weekDays=[];
+  for(let i=0;i<7;i++) weekDays.push(addDays(viewMonday,i));
+  const nets = weekDays.map(k=>getDayNet(k));
+  const isFuture = weekDays.map(k=>k>today);
+  const isViewDay = weekDays.map(k=>k===viewDate);
+
+  weekChart = new Chart(weekCtx, {
+    type:'bar',
+    data:{labels:weekDays.map(k=>shortDay(k)), datasets:[{
+      data:nets,
+      backgroundColor:nets.map((v,i)=>
+        isFuture[i]?'rgba(255,255,255,0.05)'
+        :isViewDay[i]?(v>=0?'#7dff9b':'#ff7d6b')
+        :v>=0?'rgba(125,255,155,0.4)':'rgba(255,125,107,0.4)'
+      ),
+      borderColor:nets.map((v,i)=>isFuture[i]?'transparent':v>=0?'rgba(125,255,155,0.8)':'rgba(255,125,107,0.8)'),
+      borderWidth:1, borderRadius:3
+    }]},
+    options:{
+      responsive:true,
+      onClick:(evt,els)=>{if(els.length){viewDate=weekDays[els[0].index];render();}},
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#1a1a1a',borderColor:'rgba(255,255,255,0.14)',borderWidth:1,
+        titleColor:'#888',bodyColor:'#f0ede8',
+        titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:11},
+        callbacks:{title:items=>formatLabel(weekDays[items[0].dataIndex]),label:item=>' '+(item.raw>=0?'+':'')+item.raw+' kcal'}
+      }},
+      scales:{
+        x:{ticks:{color:'#555',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
+        y:{ticks:{color:'#555',font:{family:'DM Mono',size:10},callback:v=>(v>=0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}}
+      }
+    }
+  });
+
+  // ── Bottom: recent weeks standalone bars ──
+  const n = chartRange==='week'?8:chartRange==='month'?13:52;
+  const mondays = getWeekMondays(n);
+  const scores = mondays.map(m=>getWeekScore(m));
+  const isCurrentWeek = mondays.map(m=>m===getWeekMonday(todayKey()));
+
   const ctx = document.getElementById('chartCanvas').getContext('2d');
   if (chart) { chart.destroy(); chart=null; }
 
-  if (chartType==='bar') {
-    // ── Daily view: each day of viewDate's week ──
-    const keys = getChartKeys();
-    const nets = keys.map(k=>getDayNet(k));
-    const viewMonday = getWeekMonday(viewDate);
-    const labels = keys.map(k=>shortDay(k));
-    const isViewDay = keys.map(k=>k===viewDate);
-    const isFuture = keys.map(k=>k>today);
-
-    const barBg = nets.map((v,i) =>
-      isFuture[i] ? 'rgba(255,255,255,0.05)'
-      : isViewDay[i] ? (v>=0?'#7dff9b':'#ff7d6b')
-      : v>=0 ? 'rgba(125,255,155,0.4)' : 'rgba(255,125,107,0.4)'
-    );
-
-    chart = new Chart(ctx, {
-      type: 'bar',
-      data: { labels, datasets: [{
-        data: nets,
-        backgroundColor: barBg,
-        borderColor: nets.map((v,i)=>isFuture[i]?'transparent':v>=0?'rgba(125,255,155,0.8)':'rgba(255,125,107,0.8)'),
-        borderWidth: 1, borderRadius: 3
-      }]},
-      options: {
-        responsive: true,
-        onClick: (evt, els) => { if(els.length){viewDate=keys[els[0].index];render();} },
-        plugins: {
-          legend:{display:false},
-          tooltip:{
-            backgroundColor:'#1a1a1a',borderColor:'rgba(255,255,255,0.14)',borderWidth:1,
-            titleColor:'#888',bodyColor:'#f0ede8',
-            titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:11},
-            callbacks:{
-              title:items=>formatLabel(keys[items[0].dataIndex]),
-              label:item=>' '+(item.raw>=0?'+':'')+item.raw+' kcal'
-            }
-          }
-        },
-        scales:{
-          x:{ticks:{color:'#555',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
-          y:{ticks:{color:'#555',font:{family:'DM Mono',size:10},callback:v=>(v>=0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}}
+  chart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:mondays.map(m=>{
+        const d=parseKey(m);
+        if(n<=13) return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+        return d.getDate()<=7?d.toLocaleDateString('en-GB',{month:'short'}):'';
+      }),
+      datasets:[{
+        data:scores,
+        backgroundColor:scores.map((s,i)=>isCurrentWeek[i]?(s>=0?'#7dff9b':'#ff7d6b'):(s>=0?'rgba(125,255,155,0.45)':'rgba(255,125,107,0.45)')),
+        borderColor:scores.map(s=>s>=0?'rgba(125,255,155,0.8)':'rgba(255,125,107,0.8)'),
+        borderWidth:1, borderRadius:3
+      }]
+    },
+    options:{
+      responsive:true,
+      onClick:(evt,els)=>{
+        if(!els.length) return;
+        viewDate=mondays[els[0].index];
+        render();
+        window.scrollTo({top:0,behavior:'smooth'});
+      },
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#1a1a1a',borderColor:'rgba(255,255,255,0.14)',borderWidth:1,
+        titleColor:'#888',bodyColor:'#f0ede8',
+        titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:11},
+        callbacks:{
+          title:items=>{const m=mondays[items[0].dataIndex];return parseKey(m).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+parseKey(addDays(m,6)).toLocaleDateString('en-GB',{day:'numeric',month:'short'});},
+          label:item=>{const v=item.raw,kg=Math.abs(v/KCAL_PER_KG).toFixed(2);return ' '+(v>=0?'+':'')+v+' kcal  ('+(v>=0?'-':'+')+kg+' kg)';}
         }
+      }},
+      scales:{
+        x:{ticks:{color:'#555',font:{family:'DM Mono',size:9},maxRotation:0},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
+        y:{ticks:{color:'#555',font:{family:'DM Mono',size:9},callback:v=>(v>=0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}}
       }
-    });
-
-  } else {
-    // ── Cumulative weekly scores view ──
-    const mondays = getChartKeys();
-    const currentMonday = getWeekMonday(viewDate);
-    const scores = mondays.map(m=>getWeekScore(m));
-
-    // Running cumulative of weekly scores (resets at start of shown window)
-    let running=0;
-    const cumScores = scores.map(s=>{ running+=s; return running; });
-
-    const labels = mondays.map(m=>{
-      const d=parseKey(m);
-      if(chartRange==='week') return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-      if(chartRange==='month') return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-      return d.getDate()<=7 ? d.toLocaleDateString('en-GB',{month:'short'}) : '';
-    });
-
-    const isCurrentWeek = mondays.map(m=>m===currentMonday);
-    const lineColor = cumScores[cumScores.length-1]>=0 ? '#7dff9b' : '#ff7d6b';
-
-    const kgOverlay = cumScores.map(v=>+(v/KCAL_PER_KG).toFixed(3));
-
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: { labels, datasets: [
-        {
-          label:'kcal',
-          data: cumScores,
-          borderColor: lineColor,
-          backgroundColor: lineColor==='#7dff9b'?'rgba(125,255,155,0.07)':'rgba(255,125,107,0.07)',
-          borderWidth: 2,
-          pointBackgroundColor: cumScores.map((v,i)=>isCurrentWeek[i]?'#fff':(v>=0?'#7dff9b':'#ff7d6b')),
-          pointRadius: mondays.map((_,i)=>isCurrentWeek[i]?5:2),
-          fill: true, tension: 0.3, yAxisID:'y'
-        },
-        {
-          label:'kg',
-          data: kgOverlay,
-          type:'line',
-          borderColor:'rgba(255,201,107,0.5)',
-          borderWidth:1.5, borderDash:[4,3],
-          pointRadius:0, fill:false, tension:0.3, yAxisID:'y2'
-        }
-      ]},
-      options: {
-        responsive: true,
-        interaction:{mode:'index',intersect:false},
-        onClick: (evt, els) => {
-          if(els.length){ viewDate=mondays[els[0].index]; render(); }
-        },
-        plugins:{
-          legend:{display:false},
-          tooltip:{
-            backgroundColor:'#1a1a1a',borderColor:'rgba(255,255,255,0.14)',borderWidth:1,
-            titleColor:'#888',bodyColor:'#f0ede8',
-            titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:11},
-            callbacks:{
-              title:items=>{
-                const m=mondays[items[0].dataIndex];
-                return 'w/c '+parseKey(m).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-              },
-              label:item=>{
-                if(item.datasetIndex===0) return ' '+(item.raw>=0?'+':'')+item.raw+' kcal';
-                const n=parseFloat(item.raw);
-                return ' '+(n>=0?'-':'+')+Math.abs(n).toFixed(2)+' kg';
-              }
-            }
-          }
-        },
-        scales:{
-          x:{ticks:{color:'#555',font:{family:'DM Mono',size:9},maxRotation:0},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
-          y:{position:'left',ticks:{color:'#555',font:{family:'DM Mono',size:9},callback:v=>(v>=0?'+':'')+v},grid:{color:'rgba(255,255,255,0.04)'},border:{color:'rgba(255,255,255,0.08)'}},
-          y2:{position:'right',ticks:{color:'rgba(255,201,107,0.45)',font:{family:'DM Mono',size:9},callback:v=>{const n=parseFloat(v);return(n>=0?'-':'+')+Math.abs(n).toFixed(1)+'kg';}},grid:{drawOnChartArea:false},border:{color:'rgba(255,255,255,0.08)'}}
-        }
-      }
-    });
-  }
+    }
+  });
 }
 
 // ── Render ───────────────────────────────────────────────
 function render() {
   const isToday = viewDate===todayKey();
 
-  // Date nav
   document.getElementById('dateLabel').textContent = formatLabel(viewDate);
   document.getElementById('dateSublabel').textContent = isToday ? '' : formatSub(viewDate);
   document.getElementById('todayBtn').style.display = isToday ? 'none' : 'block';
   document.getElementById('dateNext').classList.toggle('disabled', isToday);
 
-  // Balance = weekly (Mon–Sun of viewed date's week), resets each Monday
   const bal = getWeekBalance(viewDate);
   const monday = getWeekMonday(viewDate);
   const balEl = document.getElementById('balanceAmt');
   balEl.textContent = (bal>=0?'+':'')+bal;
   balEl.className = 'balance-amount'+(bal<0?' negative':'');
-  const isThisWeek = monday === getWeekMonday(todayKey());
-  document.getElementById('balanceLabel').textContent = isThisWeek ? 'This week' : 'Week balance';
+  const isThisWeek = monday===getWeekMonday(todayKey());
+  document.getElementById('balanceLabel').textContent = isThisWeek ? 'This week' : 'Week of '+parseKey(monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
   document.getElementById('balanceUnit').textContent = 'kcal · resets every monday';
 
-  // kg — based on weekly balance
   const kgEl = document.getElementById('kgVal');
   kgEl.textContent = (bal>=0?'-':'+')+Math.abs(bal/KCAL_PER_KG).toFixed(2)+' kg';
   kgEl.className = 'kg-val '+(bal>=0?'loss':'gain');
   document.getElementById('kgNote').textContent = bal>=0 ? 'surplus → loss' : 'deficit → gain';
 
-  // Day stats
   const {earned,spent} = getDayTotals(viewDate);
   document.getElementById('earnedAmt').textContent = '+'+earned;
   document.getElementById('spentAmt').textContent = '-'+spent;
@@ -511,21 +490,16 @@ function render() {
   document.getElementById('earnedSub').textContent = dayLbl;
   document.getElementById('spentSub').textContent = dayLbl;
 
-  // Log: show entries for viewed date
   const entries = state.log.filter(e=>e.dateKey===viewDate);
   const list = document.getElementById('logList');
   document.getElementById('logTitle').textContent = isToday ? "Today's activity" : formatLabel(viewDate);
   if (entries.length===0) {
-    list.innerHTML='';
-    list.appendChild(document.getElementById('emptyState'));
+    list.innerHTML=''; list.appendChild(document.getElementById('emptyState'));
   } else {
     list.innerHTML='';
-    const indexed = state.log.map((e,i)=>({e,i})).filter(({e})=>e.dateKey===viewDate);
-    indexed.slice().reverse().forEach(({e: entry, i: globalIdx})=>{
-      const div=document.createElement('div');
-      div.className='log-item';
-      const sign=entry.type==='earn'?'+':'-';
-      const cls=entry.type==='earn'?'pos':'neg';
+    state.log.map((e,i)=>({e,i})).filter(({e})=>e.dateKey===viewDate).slice().reverse().forEach(({e:entry,i:globalIdx})=>{
+      const div=document.createElement('div'); div.className='log-item';
+      const sign=entry.type==='earn'?'+':'-', cls=entry.type==='earn'?'pos':'neg';
       div.innerHTML=`<div class="log-item-left"><div class="log-name">${entry.name}</div><div class="log-meta">${entry.time}</div></div><div class="log-right"><div class="log-cal ${cls}">${sign}${entry.cal}</div><button class="delete-btn" onclick="deleteEntry(${globalIdx})" title="Remove">×</button></div>`;
       list.appendChild(div);
     });
@@ -533,25 +507,12 @@ function render() {
 
   renderChart();
   renderHistory();
-  // Range tabs only visible in weekly mode
-  document.getElementById('rangeTabs').style.visibility = chartType==='line' ? 'visible' : 'hidden';
 }
 
 // ── Controls ─────────────────────────────────────────────
-function shiftDay(n) {
-  const next=addDays(viewDate,n);
-  if (next>todayKey()) return;
-  viewDate=next; render();
-}
+function shiftDay(n) { const next=addDays(viewDate,n); if(next>todayKey()) return; viewDate=next; render(); }
 function goToday() { viewDate=todayKey(); render(); }
-function setChartType(t,btn) {
-  chartType=t;
-  document.querySelectorAll('#typeTabs .tab-btn').forEach(x=>x.classList.remove('active'));
-  btn.classList.add('active');
-  // Range tabs only make sense in weekly mode
-  document.getElementById('rangeTabs').style.visibility = t==='line' ? 'visible' : 'hidden';
-  renderChart();
-}
+function setChartType(t,btn) {} // no longer used but kept to avoid errors
 function setRange(r,btn) {
   chartRange=r;
   document.querySelectorAll('#rangeTabs .tab-btn').forEach(x=>x.classList.remove('active'));
@@ -661,7 +622,6 @@ function clearAll() {
 
 // ── History / Weekly Scores ───────────────────────────────
 let historyRange = 'month';
-let historyChart = null;
 
 function setHistoryRange(r, btn) {
   historyRange = r;
@@ -670,114 +630,80 @@ function setHistoryRange(r, btn) {
   renderHistory();
 }
 
-function getWeekScore(monday) {
-  const sunday = addDays(monday, 6);
-  return state.log
-    .filter(e=>e.dateKey>=monday && e.dateKey<=sunday)
-    .reduce((s,e)=>s+(e.type==='earn'?e.cal:-e.cal),0);
-}
-
-function getWeeks() {
-  const today = todayKey();
-  const currentMonday = getWeekMonday(today);
-  const weeksBack = historyRange==='month' ? 8 : 52;
-  const weeks = [];
-  for (let i=weeksBack-1; i>=0; i--) {
-    const monday = addDays(currentMonday, -i*7);
-    const sunday = addDays(monday, 6);
-    const score = getWeekScore(monday);
-    weeks.push({ monday, sunday, score });
-  }
-  return weeks;
-}
-
 function renderHistory() {
-  if (typeof Chart === 'undefined') return;
-  const weeks = getWeeks();
   const today = todayKey();
   const currentMonday = getWeekMonday(today);
-
-  const labels = weeks.map(w => {
-    const d = parseKey(w.monday);
-    if (historyRange==='month') return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    return d.getDate()<=7 ? d.toLocaleDateString('en-GB',{month:'short'}) : '';
-  });
-
-  const scores = weeks.map(w=>w.score);
-  const barBg = scores.map((s,i) =>
-    weeks[i].monday===currentMonday
-      ? (s>=0 ? '#7dff9b' : '#ff7d6b')
-      : (s>=0 ? 'rgba(125,255,155,0.45)' : 'rgba(255,125,107,0.45)')
-  );
-  const borderColors = scores.map(s => s>=0 ? 'rgba(125,255,155,0.8)' : 'rgba(255,125,107,0.8)');
-
-  const ctx = document.getElementById('historyCanvas').getContext('2d');
-  if (historyChart) { historyChart.destroy(); historyChart=null; }
-
-  historyChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{ label:'weekly score', data:scores, backgroundColor:barBg, borderColor:borderColors, borderWidth:1, borderRadius:3 }]
-    },
-    options: {
-      responsive: true,
-      onClick: (evt, els) => {
-        if (!els.length) return;
-        const w = weeks[els[0].index];
-        viewDate = w.monday > today ? today : w.monday;
-        render();
-        window.scrollTo({top:0, behavior:'smooth'});
-      },
-      plugins: {
-        legend: { display:false },
-        tooltip: {
-          backgroundColor:'#1a1a1a', borderColor:'rgba(255,255,255,0.14)', borderWidth:1,
-          titleColor:'#888', bodyColor:'#f0ede8',
-          titleFont:{family:'DM Mono',size:10}, bodyFont:{family:'DM Mono',size:11},
-          callbacks: {
-            title: items => {
-              const w=weeks[items[0].dataIndex];
-              return parseKey(w.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+parseKey(w.sunday).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-            },
-            label: item => {
-              const v=item.raw, kg=Math.abs(v/KCAL_PER_KG).toFixed(2);
-              return ' '+(v>=0?'+':'')+v+' kcal  ('+(v>=0?'-':'+')+kg+' kg)';
-            }
-          }
-        }
-      },
-      scales: {
-        x: { ticks:{color:'#555',font:{family:'DM Mono',size:9},maxRotation:0}, grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'} },
-        y: { ticks:{color:'#555',font:{family:'DM Mono',size:9},callback:v=>(v>=0?'+':'')+v}, grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'} }
-      }
-    }
-  });
+  const n = historyRange==='month' ? 8 : 52;
+  const weeks=[];
+  for(let i=n-1;i>=0;i--) {
+    const monday = addDays(currentMonday,-i*7);
+    const sunday = addDays(monday,6);
+    const score = getWeekScore(monday);
+    weeks.push({monday,sunday,score});
+  }
 
   // Stats
-  const nonEmpty = weeks.filter(w=>w.score!==0);
-  const best = nonEmpty.length ? nonEmpty.reduce((a,b)=>a.score>b.score?a:b) : null;
-  const worst = nonEmpty.length ? nonEmpty.reduce((a,b)=>a.score<b.score?a:b) : null;
+  const played = weeks.filter(w=>w.score!==0);
+  const wins = played.filter(w=>w.score>0);
+  const best = played.length ? played.reduce((a,b)=>a.score>b.score?a:b) : null;
   let streak=0;
-  for (let i=weeks.length-1;i>=0;i--) { if(weeks[i].score>0) streak++; else break; }
+  for(let i=weeks.length-1;i>=0;i--){ if(weeks[i].score>0) streak++; else break; }
+  const winRate = played.length ? Math.round((wins.length/played.length)*100) : 0;
 
   document.getElementById('historyStats').innerHTML = `
     <div class="history-stat">
-      <div class="history-stat-label">Best week</div>
+      <div class="history-stat-label">Win rate</div>
+      <div class="history-stat-val ${winRate>=50?'pos':'neg'}">${winRate}%</div>
+      <div class="history-stat-sub">${wins.length}/${played.length} weeks</div>
+    </div>
+    <div class="history-stat">
+      <div class="history-stat-label">Best score</div>
       <div class="history-stat-val pos">${best?'+'+best.score:'—'}</div>
       <div class="history-stat-sub">${best?parseKey(best.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>
     </div>
     <div class="history-stat">
-      <div class="history-stat-label">Worst week</div>
-      <div class="history-stat-val neg">${worst&&worst.score<0?worst.score:'—'}</div>
-      <div class="history-stat-sub">${worst&&worst.score<0?parseKey(worst.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'none yet'}</div>
-    </div>
-    <div class="history-stat">
-      <div class="history-stat-label">Win streak</div>
-      <div class="history-stat-val ${streak>0?'pos':''}">${streak}</div>
-      <div class="history-stat-sub">week${streak===1?'':'s'} positive</div>
+      <div class="history-stat-label">🔥 Streak</div>
+      <div class="history-stat-val ${streak>0?'pos':''}">${streak}w</div>
+      <div class="history-stat-sub">${streak>0?'in a row':'no streak'}</div>
     </div>
   `;
+
+  // Game cards — most recent first
+  const maxAbs = Math.max(...weeks.map(w=>Math.abs(w.score)), 1);
+  const container = document.getElementById('weekCards');
+  container.innerHTML='';
+
+  weeks.slice().reverse().forEach(w => {
+    const isCurrent = w.monday===currentMonday;
+    const isEmpty = w.score===0 && w.sunday>today;
+    const win = w.score>0;
+    const loss = w.score<0;
+
+    const card = document.createElement('div');
+    const cls = isCurrent?'current-week':win?'win':loss?'loss':'empty';
+    card.className = `week-card ${cls}`;
+
+    const badge = isCurrent?'⏱':win?'✅':loss?'❌':'·';
+    const kg = Math.abs(w.score/KCAL_PER_KG).toFixed(2);
+    const kgStr = w.score===0?'' : (w.score>0?'−':'+')+kg+' kg';
+    const barPct = Math.round((Math.abs(w.score)/maxAbs)*100);
+    const dateStr = parseKey(w.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+parseKey(w.sunday).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const scoreStr = w.score===0?'no data':(w.score>0?'+':'')+w.score+' kcal';
+
+    card.innerHTML = `
+      <div class="wc-badge">${badge}</div>
+      <div class="wc-info">
+        <div class="wc-dates">${dateStr}</div>
+        <div class="wc-bar-wrap"><div class="wc-bar ${win?'pos':loss?'neg':''}" style="width:${barPct}%"></div></div>
+      </div>
+      <div>
+        <div class="wc-score ${win?'pos':loss?'neg':'zero'}">${scoreStr}</div>
+        <div class="wc-kg">${kgStr}</div>
+      </div>
+    `;
+    card.onclick = () => { viewDate=w.monday>today?today:w.monday; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+    container.appendChild(card);
+  });
 }
 
 render();
