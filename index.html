@@ -243,9 +243,7 @@
     <h3 id="logTitle">Today's activity</h3>
     <button class="clear-btn" onclick="clearAll()">clear all</button>
   </div>
-  <div class="log-list" id="logList">
-    <div class="empty-state" id="emptyState">no activity yet</div>
-  </div>
+  <div class="log-list" id="logList"></div>
 </div>
 
 <!-- Weekly history scoreboard -->
@@ -494,7 +492,7 @@ function render() {
   const list = document.getElementById('logList');
   document.getElementById('logTitle').textContent = isToday ? "Today's activity" : formatLabel(viewDate);
   if (entries.length===0) {
-    list.innerHTML=''; list.appendChild(document.getElementById('emptyState'));
+    list.innerHTML='<div class="empty-state">no activity yet</div>';
   } else {
     list.innerHTML='';
     state.log.map((e,i)=>({e,i})).filter(({e})=>e.dateKey===viewDate).slice().reverse().forEach(({e:entry,i:globalIdx})=>{
