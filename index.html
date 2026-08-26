@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="A personal weekly calorie balance tracker — earn kcal from workouts, spend on snacks, and see your weekly score.">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cal Bank">
@@ -26,6 +29,11 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { background: var(--bg); color: var(--text); font-family: var(--font-head); overscroll-behavior: none; }
   body { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; min-height: 100dvh; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
 
   /* Header */
   header { padding: 52px 20px 0; display: flex; align-items: flex-end; justify-content: space-between; }
@@ -34,8 +42,7 @@
   .date-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 0; }
   .date-arrow { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 10px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text); transition: background 0.15s; user-select: none; flex-shrink: 0; }
   .date-arrow:active { background: var(--surface2); }
-  .date-arrow.disabled { opacity: 0.2; pointer-events: none; }
-  .date-arrow.small { width: 28px; height: 28px; font-size: 13px; color: var(--muted); }
+  .date-arrow:disabled, .date-arrow.disabled { opacity: 0.2; pointer-events: none; }
   .date-center { text-align: center; flex: 1; }
   .date-label { font-family: var(--font-mono); font-size: 15px; color: var(--text); }
   .date-sublabel { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); min-height: 16px; }
@@ -57,7 +64,6 @@
   .kg-val.gain { color: var(--red); }
   .kg-note { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 3px; }
   .hero-divider { height: 0.5px; background: var(--border); margin: 14px 0 12px; }
-  .chart-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .tab-group { display: flex; gap: 4px; }
   .tab-btn { font-family: var(--font-mono); font-size: 10px; padding: 4px 10px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--border); color: var(--muted); background: none; transition: all 0.15s; }
   .tab-btn.active { background: var(--surface2); border-color: var(--border2); color: var(--text); }
@@ -74,7 +80,7 @@
 
   /* Add buttons */
   .add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 20px 0; }
-  .add-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 18px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: transform 0.12s, background 0.15s; background: var(--surface); }
+  .add-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 18px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: transform 0.12s, background 0.15s; background: var(--surface); text-align: left; width: 100%; }
   .add-btn:active { transform: scale(0.96); }
   .add-btn.earn { background: var(--green-dim); border-color: rgba(125,255,155,0.2); }
   .add-btn.spend { background: var(--red-dim); border-color: rgba(255,125,107,0.2); }
@@ -120,7 +126,7 @@
 
   /* Week game cards */
   .week-cards { display: flex; flex-direction: column; gap: 8px; }
-  .week-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .week-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s; width: 100%; text-align: left; }
   .week-card:active { border-color: var(--border2); }
   .week-card.current-week { border-color: var(--amber); }
   .week-card.win { border-left: 3px solid var(--green); }
@@ -149,7 +155,7 @@
   .modal-footer { padding: 12px 24px calc(16px + env(safe-area-inset-bottom)); flex-shrink: 0; background: var(--surface); border-top: 0.5px solid var(--border); }
   .modal-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   .quick-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .pill { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 7px 14px; cursor: pointer; transition: background 0.12s; white-space: nowrap; }
+  .pill { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 7px 14px; cursor: pointer; transition: background 0.12s; white-space: nowrap; text-align: left; }
   .pill.selected { border-color: var(--green); color: var(--green); background: var(--green-dim); }
   .pill.selected.spend-mode { border-color: var(--red); color: var(--red); background: var(--red-dim); }
   .custom-row { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -162,6 +168,16 @@
   .btn-confirm { border: none; border-radius: 12px; padding: 14px; font-family: var(--font-head); font-size: 15px; font-weight: 700; cursor: pointer; }
   .btn-confirm.earn { background: var(--green); color: #0f0f0f; }
   .btn-confirm.spend { background: var(--red); color: #0f0f0f; }
+
+  /* Confirm dialog */
+  .confirm-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 200; align-items: center; justify-content: center; padding: 24px; }
+  .confirm-bg.open { display: flex; }
+  .confirm-box { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 18px; padding: 22px 20px; width: 100%; max-width: 340px; animation: popIn 0.18s ease; }
+  @keyframes popIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+  .confirm-msg { font-size: 15px; line-height: 1.4; margin-bottom: 18px; }
+  .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .confirm-cancel { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 12px; font-family: var(--font-head); font-size: 14px; color: var(--muted); cursor: pointer; }
+  .confirm-ok { background: var(--red); border: none; border-radius: 10px; padding: 12px; font-family: var(--font-head); font-size: 14px; font-weight: 700; color: #0f0f0f; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -171,13 +187,13 @@
 </header>
 
 <div class="date-nav">
-  <div class="date-arrow" id="datePrev" onclick="shiftDay(-1)">‹</div>
+  <button type="button" class="date-arrow" id="datePrev" onclick="shiftDay(-1)" aria-label="Previous day">‹</button>
   <div class="date-center">
-    <div class="date-label" id="dateLabel">Today</div>
+    <div class="date-label" id="dateLabel" aria-live="polite">Today</div>
     <div class="date-sublabel" id="dateSublabel"></div>
-    <button class="today-btn" id="todayBtn" onclick="goToday()">back to today</button>
+    <button type="button" class="today-btn" id="todayBtn" onclick="goToday()">back to today</button>
   </div>
-  <div class="date-arrow" id="dateNext" onclick="shiftDay(1)">›</div>
+  <button type="button" class="date-arrow" id="dateNext" onclick="shiftDay(1)" aria-label="Next day">›</button>
 </div>
 
 <div class="hero-wrap">
@@ -185,30 +201,30 @@
     <div class="hero-top">
       <div class="balance-col">
         <div class="balance-label" id="balanceLabel">This week</div>
-        <div class="balance-amount" id="balanceAmt">0</div>
+        <div class="balance-amount" id="balanceAmt" aria-live="polite">0</div>
         <div class="balance-unit" id="balanceUnit">kcal · resets monday</div>
       </div>
       <div class="kg-col">
         <div class="kg-label">Est. change</div>
-        <div class="kg-val loss" id="kgVal">0.00 kg</div>
+        <div class="kg-val loss" id="kgVal" aria-live="polite">0.00 kg</div>
         <div class="kg-note" id="kgNote">surplus → loss</div>
       </div>
     </div>
     <div class="hero-divider"></div>
     <!-- Top: current week daily bars -->
-    <div class="dual-label">this week · day by day</div>
-    <canvas id="weekCanvas" height="90"></canvas>
+    <div class="dual-label" id="weekCanvasLabel">this week · day by day</div>
+    <canvas id="weekCanvas" height="90" role="img" aria-labelledby="weekCanvasLabel"></canvas>
     <div class="hero-divider" style="margin:12px 0 10px"></div>
     <!-- Bottom: recent weeks -->
     <div class="dual-header">
-      <div class="dual-label">recent weeks</div>
+      <div class="dual-label" id="chartCanvasLabel">recent weeks</div>
       <div class="tab-group" id="rangeTabs">
-        <button class="tab-btn active" onclick="setRange('week',this)">8w</button>
-        <button class="tab-btn" onclick="setRange('month',this)">13w</button>
-        <button class="tab-btn" onclick="setRange('year',this)">52w</button>
+        <button type="button" class="tab-btn active" onclick="setRange('week',this)">8w</button>
+        <button type="button" class="tab-btn" onclick="setRange('month',this)">13w</button>
+        <button type="button" class="tab-btn" onclick="setRange('year',this)">52w</button>
       </div>
     </div>
-    <canvas id="chartCanvas" height="90"></canvas>
+    <canvas id="chartCanvas" height="90" role="img" aria-labelledby="chartCanvasLabel"></canvas>
   </div>
 </div>
 
@@ -226,16 +242,16 @@
 </div>
 
 <div class="add-row">
-  <div class="add-btn earn" onclick="openModal('earn')">
-    <div class="icon">🏃</div>
+  <button type="button" class="add-btn earn" onclick="openModal('earn')">
+    <div class="icon" aria-hidden="true">🏃</div>
     <div class="btn-main">Log workout</div>
     <div class="btn-sub">earn kcal</div>
-  </div>
-  <div class="add-btn spend" onclick="openModal('spend')">
-    <div class="icon">🍪</div>
+  </button>
+  <button type="button" class="add-btn spend" onclick="openModal('spend')">
+    <div class="icon" aria-hidden="true">🍪</div>
     <div class="btn-main">Log snack</div>
     <div class="btn-sub">spend kcal</div>
-  </div>
+  </button>
 </div>
 
 <div class="log-section">
@@ -260,7 +276,7 @@
 </div>
 
 <div class="modal-bg" id="modalBg" onclick="closeModalBg(event)">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-header">
       <h2 id="modalTitle">Log workout</h2>
     </div>
@@ -271,18 +287,29 @@
       </div>
       <div class="modal-label">Quick select</div>
       <div class="quick-pills" id="quickPills"></div>
-      <div class="modal-label">Name (optional)</div>
-      <input class="name-input" id="nameInput" placeholder="e.g. Morning run" />
-      <div class="modal-label">Calories</div>
+      <label class="modal-label" for="nameInput">Name (optional)</label>
+      <input class="name-input" id="nameInput" placeholder="e.g. Morning run" autocomplete="off" maxlength="60" />
+      <label class="modal-label" for="calInput">Calories</label>
       <div class="custom-row">
-        <input class="cal-input" id="calInput" type="number" placeholder="300" min="1" max="9999" />
+        <input class="cal-input" id="calInput" type="number" inputmode="numeric" placeholder="300" min="1" max="9999" autocomplete="off" />
       </div>
     </div>
     <div class="modal-footer">
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModalDirect()">Cancel</button>
-        <button class="btn-confirm earn" id="confirmBtn" onclick="addEntry()">Add</button>
+        <button type="button" class="btn-cancel" onclick="closeModalDirect()">Cancel</button>
+        <button type="button" class="btn-confirm earn" id="confirmBtn" onclick="addEntry()">Add</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom confirm dialog (replaces window.confirm for reliable PWA behaviour) -->
+<div class="confirm-bg" id="confirmBg">
+  <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button type="button" class="confirm-cancel" id="confirmCancelBtn">Cancel</button>
+      <button type="button" class="confirm-ok" id="confirmOkBtn">Confirm</button>
     </div>
   </div>
 </div>
@@ -310,20 +337,43 @@ function formatSub(k) { return parseKey(k).toLocaleDateString('en-GB',{day:'nume
 function shortDay(k) { return parseKey(k).toLocaleDateString('en-GB',{weekday:'short'}); }
 function shortDate(k) { const d=parseKey(k); return String(d.getDate())+'/'+String(d.getMonth()+1); }
 
-// ── State ────────────────────────────────────────────────
-let state = JSON.parse(localStorage.getItem('calbank2')||'null') || {log:[],streak:0,lastDay:null};
-// Migrate from old format
-if (state.earned !== undefined) {
-  state = {log:[],streak:state.streak||0,lastDay:state.lastDay||null};
-  localStorage.setItem('calbank2', JSON.stringify(state));
+// ── Utilities ────────────────────────────────────────────
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
 }
+
+// ── State ────────────────────────────────────────────────
+function loadState() {
+  try {
+    const raw = localStorage.getItem('calbank2');
+    if (!raw) return { log: [], streak: 0, lastDay: null };
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.log)) return { log: [], streak: 0, lastDay: null };
+    // Migrate from old pre-weekly format
+    if (parsed.earned !== undefined) return { log: [], streak: parsed.streak||0, lastDay: parsed.lastDay||null };
+    return parsed;
+  } catch (e) {
+    console.warn('Could not load saved data, starting fresh.', e);
+    return { log: [], streak: 0, lastDay: null };
+  }
+}
+let state = loadState();
 
 let viewDate = todayKey();
 let chartRange = 'week';
 let mode = 'earn';
 let chart = null;
 
-function save() { localStorage.setItem('calbank2', JSON.stringify(state)); }
+function save() {
+  try {
+    localStorage.setItem('calbank2', JSON.stringify(state));
+  } catch (e) {
+    console.error('Could not save — storage may be full.', e);
+    alert('Could not save your entry. Your device storage may be full.');
+  }
+}
 
 // ── Derived ──────────────────────────────────────────────
 function getDayNet(k) {
@@ -497,7 +547,8 @@ function render() {
     state.log.map((e,i)=>({e,i})).filter(({e})=>e.dateKey===viewDate).slice().reverse().forEach(({e:entry,i:globalIdx})=>{
       const div=document.createElement('div'); div.className='log-item';
       const sign=entry.type==='earn'?'+':'-', cls=entry.type==='earn'?'pos':'neg';
-      div.innerHTML=`<div class="log-item-left"><div class="log-name">${entry.name}</div><div class="log-meta">${entry.time}</div></div><div class="log-right"><div class="log-cal ${cls}">${sign}${entry.cal}</div><button class="delete-btn" onclick="deleteEntry(${globalIdx})" title="Remove">×</button></div>`;
+      div.innerHTML=`<div class="log-item-left"><div class="log-name">${esc(entry.name)}</div><div class="log-meta">${esc(entry.time)}</div></div><div class="log-right"><div class="log-cal ${cls}">${sign}${entry.cal}</div><button type="button" class="delete-btn" onclick="deleteEntry(${globalIdx})">×</button></div>`;
+      div.querySelector('.delete-btn').setAttribute('aria-label', `Remove ${entry.name} entry`);
       list.appendChild(div);
     });
   }
@@ -517,7 +568,13 @@ function setRange(r,btn) {
 
 // ── Recent entries history ────────────────────────────────
 function getRecent(type) {
-  return JSON.parse(localStorage.getItem('calbank-recent-' + type) || '[]');
+  try {
+    const raw = localStorage.getItem('calbank-recent-' + type);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
 }
 function saveRecent(type, name, cal) {
   let recent = getRecent(type);
@@ -525,12 +582,18 @@ function saveRecent(type, name, cal) {
   recent = recent.filter(r => r.name.toLowerCase() !== name.toLowerCase());
   recent.unshift({ name, cal });
   recent = recent.slice(0, 10); // keep last 10
-  localStorage.setItem('calbank-recent-' + type, JSON.stringify(recent));
+  try {
+    localStorage.setItem('calbank-recent-' + type, JSON.stringify(recent));
+  } catch (e) { console.warn('Could not save recent entry.', e); }
 }
 
 // ── Modal ────────────────────────────────────────────────
+let modalTriggerEl = null;
+function onModalKeydown(e) { if (e.key === 'Escape') closeModalDirect(); }
+
 function openModal(m) {
   mode=m;
+  modalTriggerEl = document.activeElement;
   document.getElementById('calInput').value='';
   document.getElementById('nameInput').value='';
   document.getElementById('modalTitle').textContent=m==='earn'?'Log workout':'Log snack';
@@ -544,7 +607,8 @@ function openModal(m) {
     recentSection.style.display = 'block';
     recentList.innerHTML = '';
     recent.forEach(r => {
-      const pill = document.createElement('div');
+      const pill = document.createElement('button');
+      pill.type = 'button';
       pill.className = 'pill';
       pill.textContent = r.name + ' · ' + r.cal;
       pill.onclick = () => {
@@ -564,7 +628,7 @@ function openModal(m) {
   const pillsEl=document.getElementById('quickPills');
   pillsEl.innerHTML='';
   presets.forEach(p=>{
-    const pill=document.createElement('div'); pill.className='pill';
+    const pill=document.createElement('button'); pill.type='button'; pill.className='pill';
     pill.textContent=p.name+' · '+p.cal;
     pill.onclick=()=>{
       document.querySelectorAll('.pill').forEach(x=>x.classList.remove('selected','spend-mode'));
@@ -575,14 +639,21 @@ function openModal(m) {
     pillsEl.appendChild(pill);
   });
   document.getElementById('modalBg').classList.add('open');
+  document.addEventListener('keydown', onModalKeydown);
+  // Move focus into the dialog for keyboard/screen-reader users
+  setTimeout(() => document.getElementById('nameInput').focus(), 50);
 }
-function closeModalDirect() { document.getElementById('modalBg').classList.remove('open'); }
+function closeModalDirect() {
+  document.getElementById('modalBg').classList.remove('open');
+  document.removeEventListener('keydown', onModalKeydown);
+  if (modalTriggerEl && typeof modalTriggerEl.focus === 'function') modalTriggerEl.focus();
+}
 function closeModalBg(e) { if(e.target===document.getElementById('modalBg')) closeModalDirect(); }
 
 function addEntry() {
-  const cal=parseInt(document.getElementById('calInput').value);
+  const cal=Math.min(9999, parseInt(document.getElementById('calInput').value));
   if(!cal||cal<=0) return;
-  const name=document.getElementById('nameInput').value.trim()||(mode==='earn'?'Workout':'Snack');
+  const name=(document.getElementById('nameInput').value.trim()||(mode==='earn'?'Workout':'Snack')).slice(0,60);
   const now=new Date();
   const timeStr=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 
@@ -601,17 +672,45 @@ function addEntry() {
   save(); render(); closeModalDirect();
 }
 
-function deleteEntry(idx) {
+// ── Custom confirm dialog (more reliable than window.confirm in PWA contexts) ──
+function confirmDialog(message) {
+  return new Promise(resolve => {
+    const bg = document.getElementById('confirmBg');
+    document.getElementById('confirmMsg').textContent = message;
+    bg.classList.add('open');
+    const okBtn = document.getElementById('confirmOkBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    const cleanup = (result) => {
+      bg.classList.remove('open');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    };
+    const onOk = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    const onKey = (e) => { if (e.key==='Escape') cleanup(false); };
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    document.addEventListener('keydown', onKey);
+    okBtn.focus();
+  });
+}
+
+async function deleteEntry(idx) {
   const entry = state.log[idx];
+  if (!entry) return;
   const sign = entry.type === 'earn' ? '+' : '-';
-  if (!confirm(`Delete "${entry.name}" (${sign}${entry.cal} kcal)?`)) return;
+  const ok = await confirmDialog(`Delete "${entry.name}" (${sign}${entry.cal} kcal)?`);
+  if (!ok) return;
   state.log.splice(idx, 1);
   save(); render();
 }
 
-function clearAll() {
+async function clearAll() {
   const label = viewDate === todayKey() ? "today's" : formatLabel(viewDate) + "'s";
-  if(!confirm(`Clear all ${label} activity?`)) return;
+  const ok = await confirmDialog(`Clear all ${label} activity?`);
+  if (!ok) return;
   state.log = state.log.filter(e => e.dateKey !== viewDate);
   save(); render();
 }
@@ -671,11 +770,11 @@ function renderHistory() {
 
   weeks.slice().reverse().forEach(w => {
     const isCurrent = w.monday===currentMonday;
-    const isEmpty = w.score===0 && w.sunday>today;
     const win = w.score>0;
     const loss = w.score<0;
 
-    const card = document.createElement('div');
+    const card = document.createElement('button');
+    card.type = 'button';
     const cls = isCurrent?'current-week':win?'win':loss?'loss':'empty';
     card.className = `week-card ${cls}`;
 
@@ -687,7 +786,7 @@ function renderHistory() {
     const scoreStr = w.score===0?'no data':(w.score>0?'+':'')+w.score+' kcal';
 
     card.innerHTML = `
-      <div class="wc-badge">${badge}</div>
+      <div class="wc-badge" aria-hidden="true">${badge}</div>
       <div class="wc-info">
         <div class="wc-dates">${dateStr}</div>
         <div class="wc-bar-wrap"><div class="wc-bar ${win?'pos':loss?'neg':''}" style="width:${barPct}%"></div></div>
@@ -697,6 +796,7 @@ function renderHistory() {
         <div class="wc-kg">${kgStr}</div>
       </div>
     `;
+    card.setAttribute('aria-label', `Week of ${dateStr}, ${scoreStr}. View this week.`);
     card.onclick = () => { viewDate=w.monday>today?today:w.monday; render(); window.scrollTo({top:0,behavior:'smooth'}); };
     container.appendChild(card);
   });

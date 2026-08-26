@@ -1,4 +1,7 @@
 {
+  "id": "/",
+  "lang": "en",
+  "dir": "ltr",
   "name": "Calorie Bank",
   "short_name": "Cal Bank",
   "description": "Track extra calories earned and spent",
