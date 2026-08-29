@@ -36,17 +36,17 @@
   }
 
   /* Header */
-  header { padding: 52px 20px 0; display: flex; align-items: flex-end; justify-content: space-between; }
+  header { padding: max(52px, calc(env(safe-area-inset-top) + 20px)) 20px 0; display: flex; align-items: flex-end; justify-content: space-between; }
   header h1 { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   /* Date nav */
   .date-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 0; }
-  .date-arrow { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 10px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text); transition: background 0.15s; user-select: none; flex-shrink: 0; }
-  .date-arrow:active { background: var(--surface2); }
+  .date-arrow { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 10px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text); transition: background 0.15s, transform 0.1s; user-select: none; flex-shrink: 0; }
+  .date-arrow:active { background: var(--surface2); transform: scale(0.94); }
   .date-arrow:disabled, .date-arrow.disabled { opacity: 0.2; pointer-events: none; }
   .date-center { text-align: center; flex: 1; }
   .date-label { font-family: var(--font-mono); font-size: 15px; color: var(--text); }
   .date-sublabel { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); min-height: 16px; }
-  .today-btn { font-size: 10px; color: var(--amber); background: none; border: none; cursor: pointer; font-family: var(--font-mono); padding: 2px 0 0; display: none; }
+  .today-btn { font-size: 10px; color: var(--amber); background: none; border: none; cursor: pointer; font-family: var(--font-mono); padding: 6px 4px; margin: -6px -4px 0; display: none; }
 
   /* Hero card */
   .hero-wrap { padding: 14px 20px 0; }
@@ -65,8 +65,9 @@
   .kg-note { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 3px; }
   .hero-divider { height: 0.5px; background: var(--border); margin: 14px 0 12px; }
   .tab-group { display: flex; gap: 4px; }
-  .tab-btn { font-family: var(--font-mono); font-size: 10px; padding: 4px 10px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--border); color: var(--muted); background: none; transition: all 0.15s; }
+  .tab-btn { font-family: var(--font-mono); font-size: 10px; padding: 8px 12px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--border); color: var(--muted); background: none; transition: all 0.15s; min-height: 32px; }
   .tab-btn.active { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+  .tab-btn:active { transform: scale(0.94); }
   canvas#chartCanvas { width: 100% !important; display: block; }
 
   /* Stats */
@@ -92,25 +93,30 @@
   .log-section { flex: 1; padding: 20px 20px 0; }
   .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .log-header h3 { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-  .clear-btn { font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; font-family: var(--font-head); padding: 0; }
+  .clear-btn { font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; font-family: var(--font-head); padding: 10px 0; min-height: 40px; display: flex; align-items: center; }
   .log-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 24px; }
-  .log-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.2s ease; gap: 10px; }
+  .log-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 4px 4px 4px 14px; display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.2s ease; gap: 10px; }
   @keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
-  .log-item-left { flex: 1; min-width: 0; }
-  .log-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .log-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
-  .log-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .log-item-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .log-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .log-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); display: block; }
+  .log-right { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
   .log-cal { font-family: var(--font-mono); font-size: 16px; font-weight: 500; }
+  .log-edit-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 8px; margin: -8px 0 -8px -10px; border-radius: 8px; text-align: left; transition: background 0.12s; }
+  .log-edit-btn:hover, .log-edit-btn:active { background: rgba(255,255,255,0.04); }
   .log-cal.pos { color: var(--green); }
   .log-cal.neg { color: var(--red); }
-  .delete-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; padding: 2px 0 2px 2px; line-height: 1; transition: color 0.15s; opacity: 0.5; }
-  .delete-btn:hover { color: var(--red); opacity: 1; }
+  .delete-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; padding: 12px; line-height: 1; transition: color 0.15s; opacity: 0.5; min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center; margin-right: -8px; }
+  .delete-btn:hover, .delete-btn:active { color: var(--red); opacity: 1; }
   .empty-state { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; font-family: var(--font-mono); }
 
   /* Dual chart labels */
   .dual-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   .dual-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   canvas#weekCanvas, canvas#chartCanvas { width: 100% !important; display: block; }
+  .chart-loading { height: 90px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+  @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+  .chart-loading { animation: pulse 1.4s ease-in-out infinite; }
 
   /* History scoreboard */
   .history-section { padding: 20px 20px 32px; }
@@ -126,8 +132,8 @@
 
   /* Week game cards */
   .week-cards { display: flex; flex-direction: column; gap: 8px; }
-  .week-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s; width: 100%; text-align: left; }
-  .week-card:active { border-color: var(--border2); }
+  .week-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s, transform 0.1s; width: 100%; text-align: left; min-height: 44px; }
+  .week-card:active { border-color: var(--border2); transform: scale(0.98); }
   .week-card.current-week { border-color: var(--amber); }
   .week-card.win { border-left: 3px solid var(--green); }
   .week-card.loss { border-left: 3px solid var(--red); }
@@ -155,7 +161,8 @@
   .modal-footer { padding: 12px 24px calc(16px + env(safe-area-inset-bottom)); flex-shrink: 0; background: var(--surface); border-top: 0.5px solid var(--border); }
   .modal-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   .quick-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .pill { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 7px 14px; cursor: pointer; transition: background 0.12s; white-space: nowrap; text-align: left; }
+  .pill { font-family: var(--font-mono); font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 8px 14px; cursor: pointer; transition: background 0.12s, transform 0.1s; white-space: nowrap; text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  .pill:active { transform: scale(0.96); }
   .pill.selected { border-color: var(--green); color: var(--green); background: var(--green-dim); }
   .pill.selected.spend-mode { border-color: var(--red); color: var(--red); background: var(--red-dim); }
   .custom-row { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -168,6 +175,8 @@
   .btn-confirm { border: none; border-radius: 12px; padding: 14px; font-family: var(--font-head); font-size: 15px; font-weight: 700; cursor: pointer; }
   .btn-confirm.earn { background: var(--green); color: #0f0f0f; }
   .btn-confirm.spend { background: var(--red); color: #0f0f0f; }
+  .delete-entry-link { width: 100%; background: none; border: none; color: var(--red); font-family: var(--font-mono); font-size: 12px; padding: 12px 0; margin-top: 4px; cursor: pointer; text-align: center; opacity: 0.75; }
+  .delete-entry-link:hover, .delete-entry-link:active { opacity: 1; }
 
   /* Confirm dialog */
   .confirm-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 200; align-items: center; justify-content: center; padding: 24px; }
@@ -178,6 +187,11 @@
   .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .confirm-cancel { background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 12px; font-family: var(--font-head); font-size: 14px; color: var(--muted); cursor: pointer; }
   .confirm-ok { background: var(--red); border: none; border-radius: 10px; padding: 12px; font-family: var(--font-head); font-size: 14px; font-weight: 700; color: #0f0f0f; cursor: pointer; }
+
+  /* Toast */
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 12px; padding: 12px 18px; font-family: var(--font-mono); font-size: 13px; color: var(--text); z-index: 300; opacity: 0; transition: transform 0.25s cubic-bezier(.4,0,.2,1), opacity 0.25s; pointer-events: none; white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast .toast-icon { margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -293,6 +307,7 @@
       <div class="custom-row">
         <input class="cal-input" id="calInput" type="number" inputmode="numeric" placeholder="300" min="1" max="9999" autocomplete="off" />
       </div>
+      <button type="button" id="deleteFromModal" class="delete-entry-link" onclick="deleteFromModal()" style="display:none">Delete this entry</button>
     </div>
     <div class="modal-footer">
       <div class="modal-actions">
@@ -313,6 +328,8 @@
     </div>
   </div>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -342,6 +359,18 @@ function esc(str) {
   const div = document.createElement('div');
   div.textContent = String(str);
   return div.innerHTML;
+}
+function fmtNum(n) {
+  const sign = n >= 0 ? '+' : '-';
+  return sign + Math.abs(n).toLocaleString('en-GB');
+}
+let toastTimer = null;
+function showToast(msg, icon) {
+  const el = document.getElementById('toast');
+  el.textContent = (icon ? icon+'  ' : '') + msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
 // ── State ────────────────────────────────────────────────
@@ -417,7 +446,13 @@ function getWeekMondays(n) {
 let weekChart = null;
 
 function renderChart() {
-  if (typeof Chart === 'undefined') return;
+  if (typeof Chart === 'undefined') {
+    // Chart.js loads synchronously before this script normally, but on a very
+    // slow connection it may not be ready yet — retry shortly rather than
+    // leaving the canvas area blank.
+    setTimeout(renderChart, 200);
+    return;
+  }
   const today = todayKey();
   const viewMonday = getWeekMonday(viewDate);
 
@@ -519,7 +554,7 @@ function render() {
   const bal = getWeekBalance(viewDate);
   const monday = getWeekMonday(viewDate);
   const balEl = document.getElementById('balanceAmt');
-  balEl.textContent = (bal>=0?'+':'')+bal;
+  balEl.textContent = fmtNum(bal);
   balEl.className = 'balance-amount'+(bal<0?' negative':'');
   const isThisWeek = monday===getWeekMonday(todayKey());
   document.getElementById('balanceLabel').textContent = isThisWeek ? 'This week' : 'Week of '+parseKey(monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
@@ -531,8 +566,8 @@ function render() {
   document.getElementById('kgNote').textContent = bal>=0 ? 'surplus → loss' : 'deficit → gain';
 
   const {earned,spent} = getDayTotals(viewDate);
-  document.getElementById('earnedAmt').textContent = '+'+earned;
-  document.getElementById('spentAmt').textContent = '-'+spent;
+  document.getElementById('earnedAmt').textContent = '+'+earned.toLocaleString('en-GB');
+  document.getElementById('spentAmt').textContent = '-'+spent.toLocaleString('en-GB');
   const dayLbl = isToday ? 'today' : formatLabel(viewDate).toLowerCase();
   document.getElementById('earnedSub').textContent = dayLbl;
   document.getElementById('spentSub').textContent = dayLbl;
@@ -547,7 +582,8 @@ function render() {
     state.log.map((e,i)=>({e,i})).filter(({e})=>e.dateKey===viewDate).slice().reverse().forEach(({e:entry,i:globalIdx})=>{
       const div=document.createElement('div'); div.className='log-item';
       const sign=entry.type==='earn'?'+':'-', cls=entry.type==='earn'?'pos':'neg';
-      div.innerHTML=`<div class="log-item-left"><div class="log-name">${esc(entry.name)}</div><div class="log-meta">${esc(entry.time)}</div></div><div class="log-right"><div class="log-cal ${cls}">${sign}${entry.cal}</div><button type="button" class="delete-btn" onclick="deleteEntry(${globalIdx})">×</button></div>`;
+      div.innerHTML=`<button type="button" class="log-edit-btn" onclick="openEditEntry(${globalIdx})"><span class="log-item-left"><span class="log-name">${esc(entry.name)}</span><span class="log-meta">${esc(entry.time)}</span></span><span class="log-cal ${cls}">${sign}${entry.cal}</span></button><div class="log-right"><button type="button" class="delete-btn" onclick="deleteEntry(${globalIdx})">×</button></div>`;
+      div.querySelector('.log-edit-btn').setAttribute('aria-label', `Edit ${entry.name}, ${sign}${entry.cal} kcal`);
       div.querySelector('.delete-btn').setAttribute('aria-label', `Remove ${entry.name} entry`);
       list.appendChild(div);
     });
@@ -589,15 +625,23 @@ function saveRecent(type, name, cal) {
 
 // ── Modal ────────────────────────────────────────────────
 let modalTriggerEl = null;
+let editingIndex = null;
 function onModalKeydown(e) { if (e.key === 'Escape') closeModalDirect(); }
 
-function openModal(m) {
+function openModal(m, prefillIdx) {
   mode=m;
+  editingIndex = (prefillIdx !== undefined) ? prefillIdx : null;
   modalTriggerEl = document.activeElement;
-  document.getElementById('calInput').value='';
-  document.getElementById('nameInput').value='';
-  document.getElementById('modalTitle').textContent=m==='earn'?'Log workout':'Log snack';
+  const prefill = editingIndex!==null ? state.log[editingIndex] : null;
+
+  document.getElementById('calInput').value = prefill ? prefill.cal : '';
+  document.getElementById('nameInput').value = prefill ? prefill.name : '';
+  document.getElementById('modalTitle').textContent = prefill
+    ? (m==='earn' ? 'Edit workout' : 'Edit snack')
+    : (m==='earn' ? 'Log workout' : 'Log snack');
+  document.getElementById('confirmBtn').textContent = prefill ? 'Save' : 'Add';
   document.getElementById('confirmBtn').className='btn-confirm '+m;
+  document.getElementById('deleteFromModal').style.display = prefill ? 'block' : 'none';
 
   // Recent entries as pills
   const recent = getRecent(m);
@@ -611,6 +655,7 @@ function openModal(m) {
       pill.type = 'button';
       pill.className = 'pill';
       pill.textContent = r.name + ' · ' + r.cal;
+      pill.title = r.name + ' · ' + r.cal + ' kcal';
       pill.onclick = () => {
         document.querySelectorAll('.pill').forEach(x=>x.classList.remove('selected','spend-mode'));
         pill.classList.add('selected'); if(m==='spend') pill.classList.add('spend-mode');
@@ -643,17 +688,49 @@ function openModal(m) {
   // Move focus into the dialog for keyboard/screen-reader users
   setTimeout(() => document.getElementById('nameInput').focus(), 50);
 }
+function openEditEntry(idx) {
+  const entry = state.log[idx];
+  if (!entry) return;
+  openModal(entry.type, idx);
+}
+
 function closeModalDirect() {
   document.getElementById('modalBg').classList.remove('open');
   document.removeEventListener('keydown', onModalKeydown);
   if (modalTriggerEl && typeof modalTriggerEl.focus === 'function') modalTriggerEl.focus();
+  editingIndex = null;
 }
 function closeModalBg(e) { if(e.target===document.getElementById('modalBg')) closeModalDirect(); }
+
+async function deleteFromModal() {
+  if (editingIndex===null) return;
+  const idx = editingIndex;
+  closeModalDirect();
+  await deleteEntry(idx);
+}
 
 function addEntry() {
   const cal=Math.min(9999, parseInt(document.getElementById('calInput').value));
   if(!cal||cal<=0) return;
   const name=(document.getElementById('nameInput').value.trim()||(mode==='earn'?'Workout':'Snack')).slice(0,60);
+
+  // Save to recent history either way — useful for future quick-select
+  saveRecent(mode, name, cal);
+
+  if (editingIndex !== null) {
+    // ── Update existing entry in place ──
+    const entry = state.log[editingIndex];
+    if (entry) {
+      entry.type = mode;
+      entry.name = name;
+      entry.cal = cal;
+    }
+    save(); render(); closeModalDirect();
+    showToast(`Updated ${name} · ${mode==='earn'?'+':'-'}${cal} kcal`, '✏️');
+    return;
+  }
+
+  // ── Create new entry ──
   const now=new Date();
   const timeStr=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 
@@ -665,11 +742,9 @@ function addEntry() {
     }
   }
 
-  // Save to recent history
-  saveRecent(mode, name, cal);
-
   state.log.push({type:mode,name,cal,dateKey:viewDate,time:timeStr});
   save(); render(); closeModalDirect();
+  showToast(`${name} · ${mode==='earn'?'+':'-'}${cal} kcal`, mode==='earn'?'🏃':'🍪');
 }
 
 // ── Custom confirm dialog (more reliable than window.confirm in PWA contexts) ──
@@ -705,6 +780,7 @@ async function deleteEntry(idx) {
   if (!ok) return;
   state.log.splice(idx, 1);
   save(); render();
+  showToast('Entry removed', '🗑');
 }
 
 async function clearAll() {
@@ -713,6 +789,7 @@ async function clearAll() {
   if (!ok) return;
   state.log = state.log.filter(e => e.dateKey !== viewDate);
   save(); render();
+  showToast('Activity cleared', '🗑');
 }
 
 // ── History / Weekly Scores ───────────────────────────────
@@ -753,7 +830,7 @@ function renderHistory() {
     </div>
     <div class="history-stat">
       <div class="history-stat-label">Best score</div>
-      <div class="history-stat-val pos">${best?'+'+best.score:'—'}</div>
+      <div class="history-stat-val pos">${best?fmtNum(best.score):'—'}</div>
       <div class="history-stat-sub">${best?parseKey(best.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</div>
     </div>
     <div class="history-stat">
@@ -783,7 +860,7 @@ function renderHistory() {
     const kgStr = w.score===0?'' : (w.score>0?'−':'+')+kg+' kg';
     const barPct = Math.round((Math.abs(w.score)/maxAbs)*100);
     const dateStr = parseKey(w.monday).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+parseKey(w.sunday).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    const scoreStr = w.score===0?'no data':(w.score>0?'+':'')+w.score+' kcal';
+    const scoreStr = w.score===0?'no data':fmtNum(w.score)+' kcal';
 
     card.innerHTML = `
       <div class="wc-badge" aria-hidden="true">${badge}</div>
